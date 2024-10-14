@@ -14,7 +14,7 @@ using System.Threading.Tasks;
 
 namespace MusicBeePlugin.Retrievers
 {
-    public class DiscogsRetriever : IRetriever
+    public class DiscogsRetriever : IDiscographyRetriever, IAlbumRetriever
     {
         Discogs _api;
 
@@ -113,7 +113,7 @@ namespace MusicBeePlugin.Retrievers
                 AppearanceOnly = r.Role != "Main",
             }).ToList();
 
-            return (entityName, releases);
+            return (Regex.Replace(entityName, @"\s\(\d+\)$", ""), releases);
         }
 
         public async Task<List<Models.Track>> GetReleaseTracksAsync(Models.CommentData data)

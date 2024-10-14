@@ -13,12 +13,14 @@ namespace MusicBeePlugin
     {
         private readonly string ConfigFilePath = null;
 
+        public bool OpenInFilterTab { get; set; } = false;
         public bool ShowDownloadWindow { get; set; } = true;
         public bool QueueTracksAfterAlbumLoad { get; set; } = false;
         public bool GetPopularTracks { get; set; } = false;
-        public bool UseMpv { get; set; } = false;
+        public bool UseMediaPlayer { get; set; } = false;
         public string DiscogsToken { get; set; } = null;
         public string LastfmApiKey { get; set; } = null;
+        public string MediaPlayerCommand { get; set; } = "mpv {url} --no-video";
 
         public Config() { }
 

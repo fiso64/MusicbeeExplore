@@ -12,7 +12,7 @@ using MusicBeePlugin.Models;
 
 namespace MusicBeePlugin.Retrievers
 {
-    public class MusicBrainzRetriever : IRetriever
+    public class MusicBrainzRetriever : IDiscographyRetriever, IAlbumRetriever
     {
         MusicBrainz _api;
 

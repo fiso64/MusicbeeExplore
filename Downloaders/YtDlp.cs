@@ -90,42 +90,6 @@ namespace MusicBeePlugin
 
                 process.Close();
 
-                //using (var process = new Process())
-                //{
-                //    process.StartInfo.FileName = "yt-dlp";
-                //    process.StartInfo.Arguments = ytDlpCommand;
-                //    process.StartInfo.UseShellExecute = false;
-                //    process.StartInfo.RedirectStandardOutput = true;
-                //    process.StartInfo.RedirectStandardError = true;
-                //    process.StartInfo.CreateNoWindow = true;
-
-                //    process.Start();
-
-                //    var outputTask = Task.Run(async () =>
-                //    {
-                //        while (!process.StandardOutput.EndOfStream)
-                //        {
-                //            cancellationToken.ThrowIfCancellationRequested();
-                //            string line = await process.StandardOutput.ReadLineAsync();
-                //            //onPrint.Invoke(line);
-                //            Debug.WriteLine(line);
-                //        }
-                //    });
-
-                //    var errorTask = Task.Run(async () =>
-                //    {
-                //        string error = await process.StandardError.ReadToEndAsync();
-                //        if (process.ExitCode != 0)
-                //        {
-                //            throw new Exception($"Command failed: {error}");
-                //        }
-                //    });
-
-                //    //await Task.WhenAll(outputTask, errorTask);
-
-                //    process.WaitForExit();
-                //}
-
                 return outPathNoExt + ".opus";
             }
             finally

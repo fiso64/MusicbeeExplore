@@ -18,11 +18,43 @@ namespace MusicBeePlugin.Models
         Lastfm,
     }
 
-    public enum ReleaseType
+    public enum State
     {
-        Album,
-        Single,
-        EP,
+        UnloadedAlbum,
+        UnloadedTrack,
+        Loaded,
+        LinkTrack
+    }
+
+    public enum Role
+    {
+        Main,
+        Appearance,
+    }
+
+    public enum MbeType
+    {
+        MoreAlbums,
+        PopularTracks,
+        SimilarAlbums,
+    }
+
+    public enum MbeSubgroup
+    {
+        Main,
+        Appearance,
+    }
+
+    [Flags]
+    public enum DummySongFields
+    {
+        Title = 1,
+        Artist = 2,
+        AlbumArtist = 4,
+        Album = 8,
+        Year = 16,
+        FileUrl = 32,
+        Image = 64,
     }
 
     public class Release
@@ -50,20 +82,6 @@ namespace MusicBeePlugin.Models
         public Retriever Source;
     }
 
-    public enum State
-    {
-        UnloadedAlbum,
-        UnloadedTrack,
-        Loaded,
-        LinkTrack
-    }
-
-    public enum Role
-    {
-        Main,
-        Appearance,
-    }
-
     public class CommentData
     {
         public string Id;
@@ -76,6 +94,10 @@ namespace MusicBeePlugin.Models
 
         [JsonConverter(typeof(StringEnumConverter))]
         public Role Role;
+
+        public string Group;
+
+        public string Subgroup;
 
         public Dictionary<string, string> AdditionalData;
 
@@ -93,26 +115,20 @@ namespace MusicBeePlugin.Models
 
         public static CommentData FromTrack(Track track, CommentData releaseData)
         {
+            Dictionary<string, string> data = null;
+
+            if (releaseData.AdditionalData != null && releaseData.AdditionalData.TryGetValue("Group", out string group))
+                data = new Dictionary<string, string>() { { "Group", group } };
+            
             return new CommentData
             {
                 Id = track.Id,
                 Source = track.Source,
                 State = State.UnloadedTrack,
                 Role = releaseData.Role,
+                AdditionalData = data,
             };
         }
-    }
-
-    [Flags]
-    public enum DummySongFields
-    {
-        Title = 1,
-        Artist = 2,
-        AlbumArtist = 4,
-        Album = 8,
-        Year = 16,
-        FileUrl = 32,
-        Image = 64,
     }
 
     public class DummyFile

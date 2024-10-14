@@ -8,9 +8,8 @@ using System.Threading.Tasks;
 
 namespace MusicBeePlugin.Retrievers
 {
-    public interface IRetriever
+    public interface IDiscographyRetriever
     {
         Task<(string entityName, List<Release> releases)> GetReleasesAsync(string query, Action<string> statusChange, CancellationToken ct);
-        Task<List<Track>> GetReleaseTracksAsync(CommentData data);
     }
 }

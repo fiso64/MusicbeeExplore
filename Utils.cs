@@ -57,36 +57,6 @@ namespace MusicBeePlugin
             }
         }
 
-        public static void PlayWithMpv(string url, bool wait = false)
-        {
-            // Prepare the command to run mpv
-            string command = "mpv";
-            string arguments = $"\"{Utils.EscapeQuotes(url.Trim())}\" --no-video";
-
-            // Create a new process to run mpv
-            ProcessStartInfo startInfo = new ProcessStartInfo
-            {
-                FileName = command,
-                Arguments = arguments,
-                UseShellExecute = true,
-                CreateNoWindow = false // Set to false to show the mpv window
-            };
-
-            try
-            {
-                // Start the mpv process
-                using (Process process = Process.Start(startInfo))
-                {
-                    // Optionally, you can wait for the process to exit
-                    if (wait) process.WaitForExit();
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"An error occurred while trying to play the video: {ex.Message}");
-            }
-        }
-
         public static string SafeFileName(this string fileName)
         {
             return string.Join("_", fileName.Split(Path.GetInvalidFileNameChars())).TrimEnd('.').Trim();
@@ -136,7 +106,58 @@ namespace MusicBeePlugin
             return path.StartsWith(directoryPath, StringComparison.OrdinalIgnoreCase);
         }
 
-        public static readonly byte[] DummyOpusFile = new byte[] { 79, 103, 103, 83, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 225, 93, 143, 181, 0, 0, 0, 0, 160, 153, 222, 17, 1, 19, 79, 112, 117, 115, 72, 101, 97, 100, 1, 2, 56, 1, 128, 187, 0, 0, 0, 0, 0, 79, 103, 103, 83, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 225, 93, 143, 181, 1, 0, 0, 0, 28, 9, 25, 48, 1, 60, 79, 112, 117, 115, 84, 97, 103, 115, 12, 0, 0, 0, 76, 97, 118, 102, 54, 49, 46, 49, 46, 49, 48, 48, 1, 0, 0, 0, 28, 0, 0, 0, 101, 110, 99, 111, 100, 101, 114, 61, 76, 97, 118, 99, 54, 49, 46, 51, 46, 49, 48, 48, 32, 108, 105, 98, 111, 112, 117, 115, 79, 103, 103, 83, 0, 4, 248, 94, 0, 0, 0, 0, 0, 0, 225, 93, 143, 181, 2, 0, 0, 0, 120, 108, 26, 155, 26, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 252, 255, 254, 252, 255, 254, 252, 255, 254, 252, 255, 254, 252, 255, 254, 252, 255, 254, 252, 255, 254, 252, 255, 254, 252, 255, 254, 252, 255, 254, 252, 255, 254, 252, 255, 254, 252, 255, 254, 252, 255, 254, 252, 255, 254, 252, 255, 254, 252, 255, 254, 252, 255, 254, 252, 255, 254, 252, 255, 254, 252, 255, 254, 252, 255, 254, 252, 255, 254, 252, 255, 254, 252, 255, 254, 252, 255, 254 };
+        public static void PlayWithMediaPlayer(string url, string command, bool wait = false)
+        {
+            command = command.Replace("{url}", '\"' + Utils.EscapeQuotes(url.Trim().Trim('"')) + '\"');
+
+            var (filename, arguments) = SplitCommand(command);
+
+            ProcessStartInfo startInfo = new ProcessStartInfo
+            {
+                FileName = filename,
+                Arguments = arguments,
+                UseShellExecute = true,
+                CreateNoWindow = false
+            };
+
+            try
+            {
+                using (Process process = Process.Start(startInfo))
+                {
+                    if (wait) process.WaitForExit();
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"An error occurred while trying to play the video: {ex.Message}");
+            }
+        }
+
+        public static (string filename, string arguments) SplitCommand(string fullCommand)
+        {
+            fullCommand = fullCommand.Trim();
+            
+            if (fullCommand.StartsWith("\""))
+            {
+                int endQuoteIndex = fullCommand.IndexOf("\"", 1);
+                if (endQuoteIndex != -1)
+                {
+                    string command = fullCommand.Substring(1, endQuoteIndex - 1);
+                    string arguments = fullCommand.Substring(endQuoteIndex + 1).Trim();
+                    return (command, arguments);
+                }
+            }
+
+            int spaceIndex = fullCommand.IndexOf(' ');
+            if (spaceIndex == -1)
+            {
+                return (fullCommand, "");
+            }
+
+            string cmd = fullCommand.Substring(0, spaceIndex);
+            string args = fullCommand.Substring(spaceIndex + 1).Trim();
+            return (cmd, args);
+        }
     }
 
     public class ProgressWindow : Form
