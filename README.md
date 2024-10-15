@@ -55,6 +55,28 @@ This approach allows users to browse and play music from external sources direct
   3. Fill out the form (you can use "MusicBeeExplore" as the application name).
   4. After submitting, you'll receive an API key. Copy this key and paste it into the "Last.fm API Key" field in the plugin settings.
 
+### Optimizing the Results View
+
+To enhance your browsing experience, it's recommended to create a custom view for the plugin results:
+
+1. Create a virtual tag:
+   - Go to Edit > Preferences > Tags (1)
+   - In the "Virtual Tags" section, click "Add"
+   - Name the tag "MbeHeader"
+   - Set its value to: 
+     ```
+     $If($Contains(<Comment>,Appearance),"More Albums: Appears On","More Albums")
+     ```
+
+2. Create a custom view for the plugin results:
+   - Go to the header menu > Custom Views > Copy Current View Settings To...
+   - In the dialog that appears, enter a name for your new view, such as "MusicBeeExplore Results"
+
+3. Configure the new view:
+   - Set it to be grouped by the "MbeHeader" tag
+   - Sort by year in descending order
+   - Set the view to "Album Covers"
+
 ## Usage
 
 The plugin adds several commands:
@@ -70,7 +92,7 @@ These commands can be found in the menu under "Tools > MusicBeeExplore" or as a 
 
 ### Search Syntax
 
-The plugin supports advanced search syntax for both MusicBrainz and Discogs queries:
+The plugin supports additional search syntax for both MusicBrainz and Discogs queries:
 
 #### MusicBrainz:
 
