@@ -17,10 +17,12 @@ namespace MusicBeePlugin.Commands
     public class GetAlbumsForSelectedArtistCommand : ICommand
     {
         private readonly Retriever source;
+        private readonly int retrieverLevel;
 
-        public GetAlbumsForSelectedArtistCommand(Retriever source) 
+        public GetAlbumsForSelectedArtistCommand(Retriever source, int retrieverLevel = 0) 
         {
             this.source = source;
+            this.retrieverLevel = retrieverLevel;
         }
 
         public async Task Execute()
@@ -37,6 +39,7 @@ namespace MusicBeePlugin.Commands
             string cachePath = Path.Combine(mbApi.Setting_GetPersistentStoragePath(), Plugin.CACHE_FOLDER);
             string hiddenCachePath = Path.Combine(mbApi.Setting_GetPersistentStoragePath(), Plugin.CACHE_HIDDEN_FOLDER);
             string group = null;
+            bool newResults = false;
 
             if (Directory.Exists(hiddenCachePath) && !Directory.Exists(cachePath))
             {
@@ -65,6 +68,8 @@ namespace MusicBeePlugin.Commands
                     return;
                 }
 
+                artistData.RetrieveLevel = Math.Max(retrieverLevel, artistData.RetrieveLevel);
+
                 group = CacheRegistry.GetCacheGroup(MbeType.MoreAlbums, artistData.Name);
                 cacheRegistry.Add(artistQuery, source, MbeType.MoreAlbums, group);
                 cacheRegistry.Add(artistData.Name, source, MbeType.MoreAlbums, group);
@@ -85,7 +90,11 @@ namespace MusicBeePlugin.Commands
 
                 releases = SkipExisting(releases, group);
 
-                await CreateDummyAlbums(artistData.Name, releases, progressWindow);
+                if (releases.Count > 0)
+                {
+                    newResults = true;
+                    await CreateDummyAlbums(artistData.Name, releases, progressWindow);
+                }
 
                 progressWindow.UpdateStatus("Done");
                 progressWindow.Close();
@@ -98,7 +107,14 @@ namespace MusicBeePlugin.Commands
             if (artistData == null)
                 return;
 
-            CacheRegistry.OpenCacheGroup(group, config.OpenInNewTab);
+            if (newResults || CacheRegistry.CacheGroupHasFiles(group) || config.GetPopularTracks)
+            {
+                CacheRegistry.OpenCacheGroup(group, config.OpenInNewTab);
+            }
+            else if (!newResults)
+            {
+                MessageBox.Show("No additional results found");
+            }
 
             if (config.GetPopularTracks)
             {

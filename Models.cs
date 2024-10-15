@@ -58,6 +58,7 @@ namespace MusicBeePlugin.Models
     {
         public string Name;
         public string CacheId;
+        public int RetrieveLevel;
     }
 
     public class Release

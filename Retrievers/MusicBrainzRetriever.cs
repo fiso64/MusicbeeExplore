@@ -19,7 +19,6 @@ namespace MusicBeePlugin.Retrievers
         public class MusicBrainzEntityRetrieverData : EntityRetrieverData
         {
             public string Id;
-            public bool RetrieveAll;
             public Api.MusicBrainz.Entity Entity;
             public MusicBrainzEntityRetrieverData() { Source = Retriever.MusicBrainz; }
         }
@@ -102,7 +101,7 @@ namespace MusicBeePlugin.Retrievers
                 Name = entityName, 
                 CacheId = $"{(retrieveAll ? ">" : "")}{entityName}",
                 Entity = entity, 
-                RetrieveAll = retrieveAll 
+                RetrieveLevel = Convert.ToInt32(retrieveAll),
             };
         }
 
@@ -129,7 +128,7 @@ namespace MusicBeePlugin.Retrievers
                     RetrieverData = new MusicBrainzRetrieverData { Id = r.Id, isGroup = r.IsReleaseGroup },
                 }).ToList();
 
-                if (data.RetrieveAll)
+                if (data.RetrieveLevel > 0)
                 {
                     var appearsOnReleases = await _api.GetAppearsOnReleasesByArtist(data.Id, ct);
                     releases.AddRange(appearsOnReleases.Select(r => new Release

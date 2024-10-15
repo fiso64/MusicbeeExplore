@@ -1,10 +1,11 @@
 # MusicbeeExplore
 
-MusicbeeExplore is a plugin for MusicBee that allows users to browse MusicBrainz or Discogs in the music explorer view. Implemented in a very hacky way since the MusicBee API does not support modifying the music explorer view (please see the known issues section).
+MusicbeeExplore is a plugin for MusicBee that allows users to browse MusicBrainz or Discogs in the player. It is intended to be a replacement for the "More Albums" section in the music explorer view by fetching albums from more comprehensive sources and allowing you to play the songs in their entirety, rather than just a preview. Implemented in a very hacky way since the MusicBee API does not support modifying the music explorer view (please see the known issues section).
 
 ## Features
 
 - Query Discogs or MusicBrainz for albums by an artist
+- Play songs in MusicBee by downloading them from YouTube
 - Fetch popular tracks for an artist from Last.fm
 - Get similar album recommendations
 - Seamless-ish integration with MusicBee's interface

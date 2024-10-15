@@ -19,7 +19,6 @@ namespace MusicBeePlugin.Retrievers
         public class DiscogsEntityRetrieverData : EntityRetrieverData
         {
             public int Id;
-            public int RetrieveLevel;
             public Api.Discogs.SearchEntityType EntityType;
             public DiscogsEntityRetrieverData() { Source = Models.Retriever.Discogs; }
         }

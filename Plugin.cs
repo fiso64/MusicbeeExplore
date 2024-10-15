@@ -41,6 +41,8 @@ namespace MusicBeePlugin
 
         public static ICommand getAlbumsForSelectedArtistDiscogsCommand;
         public static ICommand getAlbumsForSelectedArtistMusicBrainzCommand;
+        public static ICommand getExtendedAlbumsForSelectedArtistDiscogsCommand;
+        public static ICommand getExtendedAlbumsForSelectedArtistMusicBrainzCommand;
         public static ICommand loadSelectedAlbumsCommand;
         public static ICommand toggleCachedAlbumsCommand;
         public static ICommand getPopularTracksForArtistCommand;
@@ -83,6 +85,8 @@ namespace MusicBeePlugin
 
             getAlbumsForSelectedArtistDiscogsCommand = new GetAlbumsForSelectedArtistCommand(Retriever.Discogs);
             getAlbumsForSelectedArtistMusicBrainzCommand = new GetAlbumsForSelectedArtistCommand(Retriever.MusicBrainz);
+            getExtendedAlbumsForSelectedArtistDiscogsCommand = new GetAlbumsForSelectedArtistCommand(Retriever.Discogs, 1);
+            getExtendedAlbumsForSelectedArtistMusicBrainzCommand = new GetAlbumsForSelectedArtistCommand(Retriever.MusicBrainz, 1);
             loadSelectedAlbumsCommand = new LoadSelectedAlbumsCommand();
             toggleCachedAlbumsCommand = new ToggleCachedAlbumsCommand();
             getPopularTracksForArtistCommand = new GetPopularTracksForArtistCommand();
@@ -98,6 +102,8 @@ namespace MusicBeePlugin
 
             addCommand("Discogs Query", "MusicBeeExplore: Discogs: Query selected or search box artist", getAlbumsForSelectedArtistDiscogsCommand);
             addCommand("MusicBrainz Query", "MusicBeeExplore: MusicBrainz: Query selected or search box artist", getAlbumsForSelectedArtistMusicBrainzCommand);
+            addCommand("Discogs Extended Query", "MusicBeeExplore: Discogs: Extended query selected or search box artist", getExtendedAlbumsForSelectedArtistDiscogsCommand);
+            addCommand("MusicBrainz Extended Query", "MusicBeeExplore: MusicBrainz: Extended query selected or search box artist", getExtendedAlbumsForSelectedArtistMusicBrainzCommand);
             addCommand("Load Selected Albums", "MusicBeeExplore: Load selected albums", loadSelectedAlbumsCommand);
             addCommand("Toggle Cached Albums", "MusicBeeExplore: Toggle cached albums", toggleCachedAlbumsCommand);
             addCommand("Get Popular Tracks", "MusicBeeExplore: Last.fm: Get popular tracks for selected artist", getPopularTracksForArtistCommand);
