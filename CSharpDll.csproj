@@ -100,6 +100,7 @@
     <Compile Include="Api\Discogs\Discogs.cs" />
     <Compile Include="Api\Lastfm\Lastfm.cs" />
     <Compile Include="Api\MusicBrainz\MusicBrainz.cs" />
+    <Compile Include="CacheRegistry.cs" />
     <Compile Include="Commands\GetSimilarAlbumsCommand.cs" />
     <Compile Include="DummyCreator.cs" />
     <Compile Include="Commands\GetAlbumsForSelectedArtistCommand.cs" />

@@ -49,8 +49,8 @@ namespace MusicBeePlugin.Api.Lastfm
                 {
                     var album = new Album
                     {
-                        Name = albumNode.SelectSingleNode(".//h3[contains(@class, 'similar-albums-item-name')]")?.InnerText.Trim(),
-                        Artist = albumNode.SelectSingleNode(".//p[contains(@class, 'similar-albums-item-artist')]")?.InnerText.Trim(),
+                        Name = Utils.UnHtmlString(albumNode.SelectSingleNode(".//h3[contains(@class, 'similar-albums-item-name')]")?.InnerText).Trim(),
+                        Artist = Utils.UnHtmlString(albumNode.SelectSingleNode(".//p[contains(@class, 'similar-albums-item-artist')]")?.InnerText).Trim(),
                         Listeners = albumNode.SelectSingleNode(".//p[contains(@class, 'similar-albums-item-listeners')]")?.InnerText.Split()[0],
                         Images = new List<AlbumImage>
                         {

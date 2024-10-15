@@ -16,6 +16,14 @@ namespace MusicBeePlugin.Retrievers
             public DiscogsRetrieverData() { Source = Models.Retriever.Discogs; }
         }
 
+        public class DiscogsEntityRetrieverData : EntityRetrieverData
+        {
+            public int Id;
+            public int RetrieveLevel;
+            public Api.Discogs.SearchEntityType EntityType;
+            public DiscogsEntityRetrieverData() { Source = Models.Retriever.Discogs; }
+        }
+
         Api.Discogs.Discogs _api;
 
         public DiscogsRetriever(Config config)
@@ -25,9 +33,8 @@ namespace MusicBeePlugin.Retrievers
             _api = new Api.Discogs.Discogs(config.DiscogsToken);
         }
 
-        public async Task<(string entityName, List<Models.Release> releases)> GetReleasesAsync(string query, Action<string> statusChange, CancellationToken ct)
+        public async Task<EntityRetrieverData> GetArtistAsync(string query, Action<string> statusChange, CancellationToken ct)
         {
-            var releases = new List<Models.Release>();
             var entityType = Api.Discogs.SearchEntityType.Artist;
             bool exact = false;
             int retrieveLevel = 0;
@@ -37,7 +44,7 @@ namespace MusicBeePlugin.Retrievers
                 retrieveLevel = 1;
                 if (query.StartsWith(">>"))
                     retrieveLevel = 2;
-                query = query.Substring(retrieveLevel);
+                query = query.TrimStart('>');
             }
 
             if (query.ToLower().StartsWith("l:"))
@@ -45,15 +52,10 @@ namespace MusicBeePlugin.Retrievers
                 entityType = Api.Discogs.SearchEntityType.Label;
                 query = query.Substring(2);
             }
-            else if (query.ToLower().StartsWith("a:"))
+            else if (query.ToLower().StartsWith("a:") || query.ToLower().StartsWith("ar:"))
             {
                 entityType = Api.Discogs.SearchEntityType.Artist;
-                query = query.Substring(2);
-            }
-            else if (query.ToLower().StartsWith("ar:"))
-            {
-                entityType = Api.Discogs.SearchEntityType.Artist;
-                query = query.Substring(3);
+                query = query.Substring(query.ToLower().StartsWith("ar:") ? 3 : 2);
             }
 
             if (query.StartsWith("\"") && query.EndsWith("\""))
@@ -69,7 +71,7 @@ namespace MusicBeePlugin.Retrievers
             if (entities.Count == 0)
             {
                 statusChange($"No results found for {entityType}: {query}");
-                return (null, new List<Models.Release>());
+                return null;
             }
 
             string entityName;
@@ -86,23 +88,42 @@ namespace MusicBeePlugin.Retrievers
                 if (exactMatch == null)
                 {
                     statusChange($"No exact match found for {entityType}: {query}");
-                    return (null, new List<Models.Release>());
+                    return null;
                 }
 
                 entityName = exactMatch.Title;
                 entityId = exactMatch.Id;
             }
 
-            statusChange($"Getting releases for {entityType}: {entityName}");
+            entityName = Regex.Replace(entityName, @"\s\(\d+\)$", "");
 
-            var res = await _api.GetReleasesAsync(entityId, entityType, ct);
-
-            if (entityType == Api.Discogs.SearchEntityType.Artist && retrieveLevel != 2)
+            return new DiscogsEntityRetrieverData
             {
-                res = res.Where(release => release.Role == "Main" && (retrieveLevel >= 1 || release.Type == "master")).ToList();
+                Id = entityId,
+                Name = entityName,
+                CacheId = $"{new string('>', retrieveLevel)}{entityName}",
+                EntityType = entityType,
+                RetrieveLevel = retrieveLevel
+            };
+        }
+
+        public async Task<List<Release>> GetReleasesAsync(EntityRetrieverData retrieverData, Action<string> statusChange, CancellationToken ct)
+        {
+            if (!(retrieverData is DiscogsEntityRetrieverData data))
+            {
+                throw new ArgumentException("Data must be of type DiscogsEntityRetrieverData.");
             }
 
-            releases = res.Select(r => new Models.Release
+            statusChange($"Getting releases for {data.EntityType}: {data.Name}");
+
+            var res = await _api.GetReleasesAsync(data.Id, data.EntityType, ct);
+
+            if (data.EntityType == Api.Discogs.SearchEntityType.Artist && data.RetrieveLevel != 2)
+            {
+                res = res.Where(release => release.Role == "Main" && (data.RetrieveLevel >= 1 || release.Type == "master")).ToList();
+            }
+
+            var releases = res.Select(r => new Release
             {
                 Title = r.Title,
                 Date = r.Year.ToString(),
@@ -112,7 +133,7 @@ namespace MusicBeePlugin.Retrievers
                 RetrieverData = new DiscogsRetrieverData { Id = r.MainRelease?.ToString() ?? r.Id.ToString() },
             }).ToList();
 
-            return (Regex.Replace(entityName, @"\s\(\d+\)$", ""), releases);
+            return releases;
         }
 
         public async Task<List<Models.Track>> GetReleaseTracksAsync(RetrieverData retrieverData)

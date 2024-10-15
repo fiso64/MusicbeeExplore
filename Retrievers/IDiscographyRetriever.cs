@@ -8,7 +8,7 @@ namespace MusicBeePlugin.Retrievers
 {
     public interface IDiscographyRetriever
     {
-        //Task<()> GetArtist(string query, CancellationToken ct);
-        Task<(string entityName, List<Release> releases)> GetReleasesAsync(string query, Action<string> statusChange, CancellationToken ct);
+        Task<EntityRetrieverData> GetArtistAsync(string query, Action<string> statusChange, CancellationToken ct);
+        Task<List<Release>> GetReleasesAsync(EntityRetrieverData artistData, Action<string> statusChange, CancellationToken ct);
     }
 }

@@ -16,6 +16,14 @@ namespace MusicBeePlugin.Retrievers
             public MusicBrainzRetrieverData() { Source = Retriever.MusicBrainz; }
         }
 
+        public class MusicBrainzEntityRetrieverData : EntityRetrieverData
+        {
+            public string Id;
+            public bool RetrieveAll;
+            public Api.MusicBrainz.Entity Entity;
+            public MusicBrainzEntityRetrieverData() { Source = Retriever.MusicBrainz; }
+        }
+
         Api.MusicBrainz.MusicBrainz _api;
 
         public MusicBrainzRetriever(Config config)
@@ -23,17 +31,16 @@ namespace MusicBeePlugin.Retrievers
             _api = new Api.MusicBrainz.MusicBrainz();
         }
 
-        public async Task<(string entityName, List<Release> releases)> GetReleasesAsync(string query, Action<string> statusChange, CancellationToken ct)
+        public async Task<EntityRetrieverData> GetArtistAsync(string query, Action<string> statusChange, CancellationToken ct)
         {
-            var releases = new List<Release>();
             var entity = Api.MusicBrainz.Entity.Artist;
             bool exact = false;
             bool retrieveAll = false;
 
-            if (query.ToLower().StartsWith(">>"))
+            if (query.ToLower().StartsWith(">"))
             {
                 retrieveAll = true;
-                query = query.Substring(2);
+                query = query.TrimStart('>');
             }
 
             if (query.ToLower().StartsWith("l:"))
@@ -65,7 +72,7 @@ namespace MusicBeePlugin.Retrievers
             if (entities.Count == 0)
             {
                 statusChange($"No results found for {entity}: {query}");
-                return (null, new List<Release>());
+                return null;
             }
 
             string entityName;
@@ -82,18 +89,37 @@ namespace MusicBeePlugin.Retrievers
                 if (exactMatch == default)
                 {
                     statusChange($"No exact match found for {entity}: {query}");
-                    return (null, new List<Models.Release>());
+                    return null;
                 }
 
                 entityName = exactMatch.name;
                 entityId = exactMatch.id;
             }
 
-            statusChange($"Getting releases for {entity}: {entityName}");
+            return new MusicBrainzEntityRetrieverData 
+            { 
+                Id = entityId, 
+                Name = entityName, 
+                CacheId = $"{(retrieveAll ? ">" : "")}{entityName}",
+                Entity = entity, 
+                RetrieveAll = retrieveAll 
+            };
+        }
 
-            if (entity == Api.MusicBrainz.Entity.Artist)
+        public async Task<List<Release>> GetReleasesAsync(EntityRetrieverData retrieverData, Action<string> statusChange, CancellationToken ct)
+        {
+            if (!(retrieverData is MusicBrainzEntityRetrieverData data))
             {
-                var res = await _api.GetReleaseGroupsByArtist(entityId, entityName, ct);
+                throw new ArgumentException("Data must be of type MusicBrainzEntityRetrieverData.");
+            }
+
+            var releases = new List<Release>();
+
+            statusChange($"Getting releases for {data.Entity}: {data.Name}");
+
+            if (data.Entity == Api.MusicBrainz.Entity.Artist)
+            {
+                var res = await _api.GetReleaseGroupsByArtist(data.Id, data.Name, ct);
                 releases = res.Select(r => new Release
                 {
                     Title = r.Name,
@@ -103,9 +129,9 @@ namespace MusicBeePlugin.Retrievers
                     RetrieverData = new MusicBrainzRetrieverData { Id = r.Id, isGroup = r.IsReleaseGroup },
                 }).ToList();
 
-                if (retrieveAll)
+                if (data.RetrieveAll)
                 {
-                    var appearsOnReleases = await _api.GetAppearsOnReleasesByArtist(entityId, ct);
+                    var appearsOnReleases = await _api.GetAppearsOnReleasesByArtist(data.Id, ct);
                     releases.AddRange(appearsOnReleases.Select(r => new Release
                     {
                         Title = r.Name,
@@ -117,9 +143,9 @@ namespace MusicBeePlugin.Retrievers
                     }));
                 }
             }
-            else if (entity == Api.MusicBrainz.Entity.Label)
+            else if (data.Entity == Api.MusicBrainz.Entity.Label)
             {
-                var res = await _api.GetReleasesByLabel(entityId, ct, uniqueNamesOnly: true);
+                var res = await _api.GetReleasesByLabel(data.Id, ct, uniqueNamesOnly: true);
                 releases = res.Select(r => new Release
                 {
                     Title = r.Name,
@@ -130,7 +156,7 @@ namespace MusicBeePlugin.Retrievers
                 }).ToList();
             }
 
-            return (entityName, releases);
+            return releases;
         }
 
         public async Task<List<Track>> GetReleaseTracksAsync(RetrieverData retrieverData)

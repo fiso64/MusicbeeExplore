@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
@@ -22,6 +23,17 @@ namespace MusicBeePlugin
                 string alphanumericId = base64Hash.Replace("+", "").Replace("/", "").Replace("=", "").Substring(0, 16);
                 return alphanumericId;
             }
+        }
+
+        public static string UnHtmlString(this string s)
+        {
+            s = WebUtility.HtmlDecode(s);
+            string[] zeroWidthChars = { "\u200B", "\u200C", "\u200D", "\u00AD", "\u200E", "\u200F" };
+            foreach (var zwChar in zeroWidthChars)
+                s = s.Replace(zwChar, "");
+
+            s = s.Replace('\u00A0', ' ');
+            return s;
         }
 
         public static string EscapeQuotes(string arg)
@@ -170,7 +182,7 @@ namespace MusicBeePlugin
             InitializeComponents(title);
             SetLocation(parentHandle);
             cancellationTokenSource = new CancellationTokenSource();
-            this.FormClosing += OnFormClosing; // Subscribe to FormClosing event
+            this.FormClosing += OnFormClosing;
         }
 
         private void InitializeComponents(string title)
@@ -212,6 +224,20 @@ namespace MusicBeePlugin
                         parentBounds.Y + (parentBounds.Height - this.Height) / 2
                     );
                 }
+            }
+        }
+        public void UpdateTitle(string title)
+        {
+            if (cancellationTokenSource.IsCancellationRequested)
+                return;
+
+            if (this.InvokeRequired)
+            {
+                this.Invoke(new Action(() => this.Text = title));
+            }
+            else
+            {
+                this.Text = title;
             }
         }
 

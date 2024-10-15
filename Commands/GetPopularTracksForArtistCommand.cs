@@ -14,13 +14,21 @@ namespace MusicBeePlugin.Commands
     {
         public async Task Execute()
         {
-            string artistQuery = MusicBeeHelpers.GetSearchBoxTextIfFocused() ?? MusicBeeHelpers.GetFirstSelected().artist;
+            string artistQuery = MusicBeeHelpers.GetFirstSelected().artist;
 
-            if (string.IsNullOrEmpty(artistQuery))
+            if (string.IsNullOrWhiteSpace(artistQuery))
             {
                 MessageBox.Show("No artist name in search field or selection");
                 return;
             }
+
+            if (cacheRegistry.HasAnyCache(artistQuery, Retriever.Lastfm, MbeType.PopularTracks, out string group))
+            {
+                CacheRegistry.OpenCacheGroup(group, config.OpenInNewTab);
+                return;
+            }
+
+            group = CacheRegistry.GetCacheGroup(MbeType.PopularTracks, artistQuery);
 
             try
             {
@@ -45,8 +53,8 @@ namespace MusicBeePlugin.Commands
                 progressWindow.UpdateStatus("Done");
                 progressWindow.Close();
 
-                string group = CommentData.GetGroup(MbeType.PopularTracks, artistQuery);
-                MusicBeeHelpers.OpenMbeGroup(group, config.OpenInNewTab);
+                cacheRegistry.Add(artistQuery, Retriever.Lastfm, MbeType.PopularTracks, group);
+                CacheRegistry.OpenCacheGroup(group, config.OpenInNewTab);
 
                 mbApi.MB_RefreshPanels();
             }
@@ -87,7 +95,7 @@ namespace MusicBeePlugin.Commands
                         {
                             Type = MbeType.PopularTracks,
                             State = State.UnloadedTrack,
-                            Group = CommentData.GetGroup(MbeType.PopularTracks, artist),
+                            Group = CacheRegistry.GetCacheGroup(MbeType.PopularTracks, artist),
                             RetrieverData = track.RetrieverData,
                         }
                     };

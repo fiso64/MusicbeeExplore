@@ -54,6 +54,12 @@ namespace MusicBeePlugin.Models
         public Retriever Source;
     }
 
+    public class EntityRetrieverData : RetrieverData
+    {
+        public string Name;
+        public string CacheId;
+    }
+
     public class Release
     {
         public string Title;
@@ -89,13 +95,6 @@ namespace MusicBeePlugin.Models
         public RetrieverData RetrieverData;
 
         public string Group;
-
-        public static string GetGroup(MbeType mbeType, string entity, MbeSubgroup subgroup = MbeSubgroup.None)
-        {
-            mbeType = mbeType == MbeType.PopularTracks ? MbeType.MoreAlbums : mbeType;
-            string subgroupStr = subgroup == MbeSubgroup.None ? string.Empty : subgroup.ToString();
-            return $"{mbeType}_{entity}_{subgroupStr}";
-        }
 
         public static CommentData FromTrack(Track track, CommentData releaseData)
         {

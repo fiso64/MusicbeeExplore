@@ -18,6 +18,7 @@ namespace MusicBeePlugin
                 { MetaDataType.Album, "Album" },
                 { MetaDataType.AlbumArtist, "AlbumArtist" },
                 { MetaDataType.TrackTitle, "Title" },
+                { MetaDataType.Comment, "Comment" },
             };
 
             var query = new XElement("SmartPlaylist",
@@ -72,40 +73,6 @@ namespace MusicBeePlugin
             string album = mbApi.Library_GetFileTag(files[0], MetaDataType.Album);
             string albumArtist = DummyProcessor.RemoveIdentifier(mbApi.Library_GetFileTag(files[0], MetaDataType.AlbumArtist));
             return (artist, title, album, albumArtist);
-        }
-
-        public static void OpenMbeGroup(string group, bool newTab)
-        {
-            if (newTab)
-            {
-                SendKeys.SendWait("^t");
-            }
-            mbApi.MB_OpenFilterInTab(MetaDataType.Comment, ComparisonType.Contains, Plugin.IDENTIFIER, MetaDataType.Comment, ComparisonType.Contains, group);
-        }
-
-        public static bool HasAnyMbeCache(MbeType type, Retriever source)
-        {
-            var query = ConstructLibraryQuery(
-                (MetaDataType.Comment, ComparisonType.Contains, Plugin.IDENTIFIER),
-                (MetaDataType.Comment, ComparisonType.Contains, source.ToString()),
-                (MetaDataType.Comment, ComparisonType.Contains, type.ToString())
-            );
-
-            mbApi.Library_QueryFilesEx(query, out string[] files);
-
-            return files != null && files.Length > 0;
-        }
-
-        public static bool HasAnyMbeCache(MbeType type)
-        {
-            var query = ConstructLibraryQuery(
-                (MetaDataType.Comment, ComparisonType.Contains, Plugin.IDENTIFIER),
-                (MetaDataType.Comment, ComparisonType.Contains, type.ToString())
-            );
-
-            mbApi.Library_QueryFilesEx(query, out string[] files);
-
-            return files != null && files.Length > 0;
         }
 
         //public void SetSearchBoxText(string query)

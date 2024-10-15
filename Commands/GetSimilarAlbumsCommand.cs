@@ -22,11 +22,19 @@ namespace MusicBeePlugin.Commands
             string artist = x.albumArtist;
             string album = x.album;
 
-            if (string.IsNullOrEmpty(artist) || string.IsNullOrEmpty(album))
+            if (string.IsNullOrWhiteSpace(artist) || string.IsNullOrWhiteSpace(album))
             {
                 MessageBox.Show("No album selected");
                 return;
             }
+
+            if (cacheRegistry.HasAnyCache($"{artist}-{album}", Retriever.Lastfm, MbeType.SimilarAlbums, out string group))
+            {
+                CacheRegistry.OpenCacheGroup(group, config.OpenInNewTab);
+                return;
+            }
+
+            group = CacheRegistry.GetCacheGroup(MbeType.SimilarAlbums, $"{artist}-{album}");
 
             try
             {
@@ -52,8 +60,9 @@ namespace MusicBeePlugin.Commands
                 progressWindow.UpdateStatus("Done");
                 progressWindow.Close();
 
-                string group = CommentData.GetGroup(MbeType.SimilarAlbums, $"{artist} - {album}");
-                MusicBeeHelpers.OpenMbeGroup(group, config.OpenInNewTab);
+                cacheRegistry.Add($"{artist}-{album}", Retriever.Lastfm, MbeType.SimilarAlbums, group);
+                CacheRegistry.OpenCacheGroup(group, config.OpenInNewTab);
+
                 mbApi.MB_RefreshPanels();
             }
             catch (OperationCanceledException)
@@ -68,7 +77,7 @@ namespace MusicBeePlugin.Commands
 
         private async Task CreateDummyAlbums(string originalArtist, string originalAlbum, List<Release> releases, ProgressWindow progressWindow)
         {
-            string group = CommentData.GetGroup(MbeType.SimilarAlbums, $"{originalArtist} - {originalAlbum}");
+            string group = CacheRegistry.GetCacheGroup(MbeType.SimilarAlbums, $"{originalArtist}-{originalAlbum}");
             string cachePath = Path.Combine(mbApi.Setting_GetPersistentStoragePath(), CACHE_FOLDER);
             string artistDir = Path.Combine(cachePath, originalArtist.SafeFileName(), $"__{group}".SafeFileName());
 
@@ -119,7 +128,7 @@ namespace MusicBeePlugin.Commands
                                 { MetaDataType.Artist, release.Artist },
                                 { MetaDataType.AlbumArtist, release.Artist },
                                 { MetaDataType.Album, release.Title },
-                                { MetaDataType.Year, "9999" }
+                                { MetaDataType.Year, "8888" }
                             },
                             CommentData = new CommentData
                             {

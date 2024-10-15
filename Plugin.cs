@@ -31,6 +31,7 @@ namespace MusicBeePlugin
         public const string IDENTIFIER = "巽 ";
         public const string CACHE_FOLDER = "MusicBeeExplore/cache";
         public const string CACHE_HIDDEN_FOLDER = "MusicBeeExplore/cache-hidden";
+        public const string CACHE_MAP_FILE = "MusicBeeExplore/cache.json";
         public const string CONFIG_FILE = "MusicBeeExplore/mbe.conf";
         public const string DUMMY_FILE = "MusicBeeExplore/cache/dummy.opus";
 
@@ -41,6 +42,7 @@ namespace MusicBeePlugin
         public static Config config;
         public static DummyCreator dummyManager;
         public static DummyProcessor dummyProcessor;
+        public static CacheRegistry cacheRegistry;
 
         public static ICommand getAlbumsForSelectedArtistDiscogsCommand;
         public static ICommand getAlbumsForSelectedArtistMusicBrainzCommand;
@@ -65,7 +67,7 @@ namespace MusicBeePlugin
             about.MinInterfaceVersion = MinInterfaceVersion;
             about.MinApiRevision = MinApiRevision;
             about.ReceiveNotifications = (ReceiveNotificationFlags.PlayerEvents);
-            about.ConfigurationPanelHeight = 160;
+            about.ConfigurationPanelHeight = 180;
 
             Startup();
 
@@ -79,8 +81,10 @@ namespace MusicBeePlugin
 
             string cachePath = Path.Combine(mbApi.Setting_GetPersistentStoragePath(), CACHE_FOLDER);
             string dummyPath = Path.Combine(mbApi.Setting_GetPersistentStoragePath(), DUMMY_FILE);
+            string cacheMapPath = Path.Combine(mbApi.Setting_GetPersistentStoragePath(), CACHE_MAP_FILE);
             dummyManager = new DummyCreator(cachePath, dummyPath);
             dummyProcessor = new DummyProcessor();
+            cacheRegistry = new CacheRegistry(cacheMapPath);
 
             getAlbumsForSelectedArtistDiscogsCommand = new GetAlbumsForSelectedArtistCommand(Retriever.Discogs);
             getAlbumsForSelectedArtistMusicBrainzCommand = new GetAlbumsForSelectedArtistCommand(Retriever.MusicBrainz);
@@ -186,7 +190,7 @@ namespace MusicBeePlugin
 
         public void Close(PluginCloseReason reason)
         {
-
+            cacheRegistry.Save();
         }
 
         public void Uninstall()

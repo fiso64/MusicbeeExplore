@@ -86,7 +86,7 @@ namespace MusicBeePlugin.Retrievers
                     return new List<Release>();
                 }
 
-                statusChange("Scraping similar albums...");
+                statusChange("Getting similar albums...");
                 var similarAlbums = await _lastFm.ScrapeSimilarAlbums(album.Url);
 
                 return similarAlbums.Select(a => new Release
