@@ -23,11 +23,9 @@ The plugin integrates with MusicBee's interface and allows users to query extern
 
 4. The downloaded audio is saved in the opus format and replaces the dummy file. The metadata is then updated to reflect the downloaded state.
 
-5. If configured, the plugin can use an external media player to stream audio directly without downloading.
+5. If configured, the plugin can use mpv to stream audio directly without downloading (although it takes about the same amount of time to start playing, at least for minute-long songs).
 
-This approach allows users to browse and play music from external sources directly within MusicBee without having to download entire albums upfront.
-
-### Requirements
+## Requirements
 
 - **yt-dlp**: This tool is required for searching and downloading audio from YouTube. Make sure it's installed and available in your system PATH.
 - **ffmpeg**: yt-dlp requires ffmpeg for audio conversion. Ensure it's installed and accessible to yt-dlp.
