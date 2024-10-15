@@ -21,6 +21,10 @@ namespace MusicBeePlugin.Commands
             {
                 await ShowCachedAlbums(hiddenCachePath, cachePath);
             }
+            else
+            {
+                return;
+            }
 
             mbApi.MB_RefreshPanels();
         }
@@ -32,11 +36,9 @@ namespace MusicBeePlugin.Commands
                 if (Directory.Exists(hiddenCachePath))
                     Directory.Delete(hiddenCachePath, true);
                 Directory.Move(cachePath, hiddenCachePath);
-                MessageBox.Show("Cached albums hidden successfully.");
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Error hiding cached albums: {ex.Message}");
                 MessageBox.Show($"Error hiding cached albums: {ex.Message}");
             }
         }
@@ -46,17 +48,15 @@ namespace MusicBeePlugin.Commands
             try
             {
                 Directory.Move(hiddenCachePath, cachePath);
-                await AddCachedAlbumsToLibrary(cachePath);
-                MessageBox.Show("Cached albums shown successfully.");
+                AddCachedAlbumsToLibrary(cachePath);
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Error showing cached albums: {ex.Message}");
                 MessageBox.Show($"Error showing cached albums: {ex.Message}");
             }
         }
 
-        private async Task AddCachedAlbumsToLibrary(string cachePath)
+        private void AddCachedAlbumsToLibrary(string cachePath)
         {
             var files = Directory.GetFiles(cachePath, "*.*", SearchOption.AllDirectories);
             var dirs = Directory.EnumerateDirectories(cachePath, "*", SearchOption.AllDirectories);

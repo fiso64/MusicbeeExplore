@@ -1,10 +1,6 @@
-﻿using System;
-using System.IO;
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
 using System.Windows.Forms;
 using MusicBeePlugin.Models;
-using MusicBeePlugin.Retrievers;
-using Newtonsoft.Json;
 using static MusicBeePlugin.Plugin;
 
 namespace MusicBeePlugin.Commands
@@ -21,16 +17,24 @@ namespace MusicBeePlugin.Commands
                 return;
             }
 
+            int count = 0;
+
             foreach (var file in files)
             {
                 var dummy = DummyFile.FromPath(mbApi, file, DummySongFields.Album | DummySongFields.AlbumArtist | DummySongFields.Year | DummySongFields.Image);
 
-                if (dummy == null || dummy.RetrieverData.State != State.UnloadedAlbum)
+                if (dummy == null || dummy.CommentData.State != State.UnloadedAlbum)
                 {
                     continue;
                 }
 
                 await Plugin.dummyProcessor.ProcessUnloadedAlbum(dummy);
+                count++;
+            }
+
+            if (count == 0)
+            {
+                MessageBox.Show("No unloaded albums selected");
             }
         }
     }

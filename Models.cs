@@ -1,12 +1,9 @@
-﻿using Newtonsoft.Json;
+﻿using MusicBeePlugin.Retrievers;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
+using Newtonsoft.Json.Linq;
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Security.RightsManagement;
-using System.Text;
-using System.Threading.Tasks;
 using static MusicBeePlugin.Plugin;
 
 namespace MusicBeePlugin.Models
@@ -26,12 +23,6 @@ namespace MusicBeePlugin.Models
         LinkTrack
     }
 
-    public enum Role
-    {
-        Main,
-        Appearance,
-    }
-
     public enum MbeType
     {
         MoreAlbums,
@@ -41,6 +32,7 @@ namespace MusicBeePlugin.Models
 
     public enum MbeSubgroup
     {
+        None,
         Main,
         Appearance,
     }
@@ -57,79 +49,115 @@ namespace MusicBeePlugin.Models
         Image = 64,
     }
 
+    public class RetrieverData
+    {
+        public Retriever Source;
+    }
+
     public class Release
     {
-        public string Id;
         public string Title;
         public string Artist;
         public string Album;
         public string Date;
         public string Thumb;
         public bool AppearanceOnly;
-        public Retriever Source;
 
-        public Dictionary<string, string> AdditionalData;
+        public RetrieverData RetrieverData;
     }
 
     public class Track
     {
-        public string Id { get; set; }
-        public string Title { get; set; }
-        public string Artist { get; set; }
-        public string TrackPosition { get; set; }
-        public string DiscPosition { get; set; }
-        public int Length { get; set; }
-        public Retriever Source;
+        public string Title;
+        public string Artist;
+        public string TrackPosition;
+        public string DiscPosition;
+        public int Length;
+
+        public RetrieverData RetrieverData;
     }
 
+    [JsonConverter(typeof(CommentDataConverter))]
     public class CommentData
     {
-        public string Id;
-
-        [JsonConverter(typeof(StringEnumConverter))]
-        public Retriever Source;
+        [JsonConverter(typeof(StringEnumConverter)), JsonProperty(Plugin.IDENTIFIER)]
+        public MbeType Type;
 
         [JsonConverter(typeof(StringEnumConverter))]
         public State State;
 
-        [JsonConverter(typeof(StringEnumConverter))]
-        public Role Role;
+        public RetrieverData RetrieverData;
 
         public string Group;
 
-        public string Subgroup;
-
-        public Dictionary<string, string> AdditionalData;
-
-        public static CommentData FromRelease(Release release)
+        public static string GetGroup(MbeType mbeType, string entity, MbeSubgroup subgroup = MbeSubgroup.None)
         {
-            return new CommentData
-            {
-                Id = release.Id,
-                Source = release.Source,
-                State = State.UnloadedAlbum,
-                Role = release.AppearanceOnly ? Role.Appearance : Role.Main,
-                AdditionalData = release.AdditionalData,
-            };
+            mbeType = mbeType == MbeType.PopularTracks ? MbeType.MoreAlbums : mbeType;
+            string subgroupStr = subgroup == MbeSubgroup.None ? string.Empty : subgroup.ToString();
+            return $"{mbeType}_{entity}_{subgroupStr}";
         }
 
         public static CommentData FromTrack(Track track, CommentData releaseData)
         {
-            Dictionary<string, string> data = null;
-
-            if (releaseData.AdditionalData != null && releaseData.AdditionalData.TryGetValue("Group", out string group))
-                data = new Dictionary<string, string>() { { "Group", group } };
-            
-            return new CommentData
+            var data = new CommentData
             {
-                Id = track.Id,
-                Source = track.Source,
+                Type = releaseData.Type,
                 State = State.UnloadedTrack,
-                Role = releaseData.Role,
-                AdditionalData = data,
+                Group = releaseData.Group,
+                RetrieverData = track.RetrieverData,
             };
+            return data;
         }
     }
+
+    public class CommentDataConverter : JsonConverter<CommentData>
+    {
+        public override void WriteJson(JsonWriter writer, CommentData value, JsonSerializer serializer)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override CommentData ReadJson(JsonReader reader, Type objectType, CommentData existingValue, bool hasExistingValue, JsonSerializer serializer)
+        {
+            JObject jo = JObject.Load(reader);
+
+            CommentData commentData = new CommentData();
+            commentData.Type = jo[Plugin.IDENTIFIER].ToObject<MbeType>(serializer);
+            commentData.State = jo[nameof(commentData.State)].ToObject<State>(serializer);
+            commentData.Group = jo[nameof(commentData.Group)].ToObject<string>(serializer);
+
+            var retrieverDataJObject = jo[nameof(commentData.RetrieverData)] as JObject;
+            if (retrieverDataJObject != null && retrieverDataJObject.ContainsKey("Source"))
+            {
+                Retriever source = retrieverDataJObject["Source"].ToObject<Retriever>(serializer);
+
+                switch (source)
+                {
+                    case Retriever.Discogs:
+                        commentData.RetrieverData = retrieverDataJObject.ToObject<DiscogsRetriever.DiscogsRetrieverData>(serializer);
+                        break;
+                    case Retriever.MusicBrainz:
+                        commentData.RetrieverData = retrieverDataJObject.ToObject<MusicBrainzRetriever.MusicBrainzRetrieverData>(serializer);
+                        break;
+                    case Retriever.Lastfm:
+                        commentData.RetrieverData = retrieverDataJObject.ToObject<LastfmRetriever.LastfmRetrieverData>(serializer);
+                        break;
+                    default:
+                        throw new NotImplementedException($"Unsupported Retriever: {source}");
+                }
+            }
+            else
+            {
+                throw new JsonSerializationException("RetrieverData or Source field is missing");
+            }
+
+            return commentData;
+        }
+
+        public override bool CanRead => true;
+        public override bool CanWrite => false;
+    }
+
 
     public class DummyFile
     {
@@ -140,11 +168,11 @@ namespace MusicBeePlugin.Models
         public string Year;
         public string FileUrl;
         public byte[] Image;
-        public CommentData RetrieverData;
+        public CommentData CommentData;
 
         private DummyFile() { }
 
-        public static DummyFile FromNowPlaying(MusicBeeApiInterface mbApi, DummySongFields flags, CommentData data = null)
+        public static DummyFile FromNowPlaying(MusicBeeApiInterface mbApi, DummySongFields flags, CommentData data)
         {
             DummyFile song = new DummyFile();
 
@@ -157,20 +185,7 @@ namespace MusicBeePlugin.Models
                 throw new InvalidOperationException("File is not in cache folder.");
             }
 
-            if (data == null)
-            {
-                string comment = mbApi.NowPlaying_GetFileTag(MetaDataType.Comment);
-
-                if (!comment.Contains(Plugin.IDENTIFIER))
-                    return null;
-
-                string jsonPart = comment.Replace(IDENTIFIER, string.Empty);
-                song.RetrieverData = JsonConvert.DeserializeObject<CommentData>(jsonPart); ;
-            }
-            else
-            {
-                song.RetrieverData = data;
-            }
+            song.CommentData = data;
 
             if ((flags & DummySongFields.Title) == DummySongFields.Title)
                 song.Title = mbApi.NowPlaying_GetFileTag(MetaDataType.TrackTitle);
@@ -218,12 +233,11 @@ namespace MusicBeePlugin.Models
                 if (!comment.Contains(Plugin.IDENTIFIER))
                     return null;
 
-                string jsonPart = comment.Replace(IDENTIFIER, string.Empty);
-                song.RetrieverData = JsonConvert.DeserializeObject<CommentData>(jsonPart); ;
+                song.CommentData = JsonConvert.DeserializeObject<CommentData>(comment); ;
             }
             else
             {
-                song.RetrieverData = data;
+                song.CommentData = data;
             }
 
             if ((flags & DummySongFields.Title) == DummySongFields.Title)
@@ -271,10 +285,9 @@ namespace MusicBeePlugin.Models
             if (!string.IsNullOrEmpty(Year))
                 mbApi.Library_SetFileTag(FileUrl, MetaDataType.Year, Year);
 
-            if (RetrieverData != null)
+            if (CommentData != null)
             {
-                string comment = Plugin.IDENTIFIER + JsonConvert.SerializeObject(RetrieverData);
-                mbApi.Library_SetFileTag(FileUrl, MetaDataType.Comment, comment);
+                mbApi.Library_SetFileTag(FileUrl, MetaDataType.Comment, JsonConvert.SerializeObject(CommentData));
             }
 
             if (Image != null)

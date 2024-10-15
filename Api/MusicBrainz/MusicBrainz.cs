@@ -1,191 +1,16 @@
-﻿using System;
+﻿using Newtonsoft.Json.Linq;
+using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
-using Newtonsoft.Json.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
-using System.Diagnostics;
 using System.Threading;
-using System.ComponentModel;
-using MusicBeePlugin.Models;
+using System.Threading.Tasks;
 
-namespace MusicBeePlugin.Retrievers
+namespace MusicBeePlugin.Api.MusicBrainz // todo: use json deserialization like the other APIs
 {
-    public class MusicBrainzRetriever : IDiscographyRetriever, IAlbumRetriever
-    {
-        MusicBrainz _api;
-
-        public MusicBrainzRetriever(Config config)
-        {
-            _api = new MusicBrainz();
-        }
-
-        public async Task<(string entityName, List<Release> releases)> GetReleasesAsync(string query, Action<string> statusChange, CancellationToken ct)
-        {
-            var releases = new List<Release>();
-            var entity = MusicBrainz.Entity.Artist;
-            bool exact = false;
-            bool retrieveAll = false;
-
-            if (query.ToLower().StartsWith(">>"))
-            {
-                retrieveAll = true;
-                query = query.Substring(2);
-            }
-
-            if (query.ToLower().StartsWith("l:"))
-            {
-                entity = MusicBrainz.Entity.Label;
-                query = query.Substring(2);
-            }
-            else if (query.ToLower().StartsWith("a:"))
-            {
-                entity = MusicBrainz.Entity.Artist;
-                query = query.Substring(2);
-            }
-            else if (query.ToLower().StartsWith("ar:"))
-            {
-                entity = MusicBrainz.Entity.Artist;
-                query = query.Substring(3);
-            }
-
-            if (query.StartsWith("\"") && query.EndsWith("\""))
-            {
-                exact = true;
-                query = query.Substring(1, query.Length - 2);
-            }
-
-            statusChange($"Querying {entity}: {query}");
-
-            var entities = await _api.QueryEntities(entity, query, ct, exact ? 20 : 0);
-
-            if (entities.Count == 0)
-            {
-                statusChange($"No results found for {entity}: {query}");
-                return (null, new List<Release>());
-            }
-
-            string entityName;
-            string entityId;
-
-            if (!exact)
-            {
-                entityName = entities[0].name;
-                entityId = entities[0].id;
-            }
-            else
-            {
-                var exactMatch = entities.FirstOrDefault(e => e.name.Equals(query, StringComparison.OrdinalIgnoreCase));
-                if (exactMatch == default)
-                {
-                    statusChange($"No exact match found for {entity}: {query}");
-                    return (null, new List<Models.Release>());
-                }
-
-                entityName = exactMatch.name;
-                entityId = exactMatch.id;
-            }
-
-            statusChange($"Getting releases for {entity}: {entityName}");
-
-            if (entity == MusicBrainz.Entity.Artist)
-            {
-                var res = await _api.GetReleaseGroupsByArtist(entityId, entityName, ct);
-                releases = res.Select(r => new Release
-                {
-                    Id = r.Id,
-                    Title = r.Name,
-                    Date = r.Date,
-                    Thumb = r.CoverArtUrl,
-                    Artist = r.Artist,
-                    Source = Retriever.MusicBrainz,
-                    AdditionalData = new Dictionary<string, string>
-                    {
-                        { "isGroup", "true" }
-                    }
-                }).ToList();
-
-                if (retrieveAll)
-                {
-                    var appearsOnReleases = await _api.GetAppearsOnReleasesByArtist(entityId, ct);
-                    releases.AddRange(appearsOnReleases.Select(r => new Release
-                    {
-                        Id = r.Id,
-                        Title = r.Name,
-                        Date = r.Date,
-                        Thumb = r.CoverArtUrl,
-                        Artist = r.Artist,
-                        Source = Retriever.MusicBrainz,
-                        AppearanceOnly = true,
-                        AdditionalData = new Dictionary<string, string>
-                        {
-                            { "isGroup", "false" }
-                        }
-                    }));
-                }
-            }
-            else if (entity == MusicBrainz.Entity.Label)
-            {
-                var res = await _api.GetReleasesByLabel(entityId, ct, uniqueNamesOnly: true);
-                releases = res.Select(r => new Release
-                {
-                    Id = r.Id,
-                    Title = r.Name,
-                    Date = r.Date,
-                    Thumb = r.CoverArtUrl,
-                    Artist = r.Artist,
-                    Source = Retriever.MusicBrainz,
-                    AdditionalData = new Dictionary<string, string>
-                    {
-                        { "isGroup", "false" }
-                    }
-                }).ToList();
-            }
-
-            return (entityName, releases);
-        }
-
-        public async Task<List<Track>> GetReleaseTracksAsync(CommentData data)
-        {
-            string id = bool.Parse(data.AdditionalData["isGroup"]) ? await _api.GetBestRelease(data.Id) : data.Id;
-
-            var songs = await _api.GetReleaseSongs(id);
-
-            var res = songs.Select(s => new Track
-            {
-                Id = s.Id,
-                Title = s.Title,
-                Artist = s.Artist,
-                Length = s.Length,
-                TrackPosition = $"{s.TrackNumber}/{s.TotalTracks}",
-                DiscPosition = $"{s.DiscNumber}/{s.TotalDiscs}",
-                Source = Retriever.MusicBrainz
-            }).ToList();
-
-            return res;
-        }
-    }
-
     public class MusicBrainz
     {
-        public enum Entity
-        {
-            Area,
-            Artist,
-            Event,
-            Genre,
-            Instrument,
-            Label,
-            Place,
-            Recording,
-            Release,
-            ReleaseGroup,
-            Series,
-            Work,
-            Url
-        }
-
         private readonly HttpClient _httpClient;
 
         public MusicBrainz()
@@ -226,7 +51,6 @@ namespace MusicBeePlugin.Retrievers
             const int limit = 100;
             bool hasMoreResults;
 
-            // Step 1: Collect all releases data
             do
             {
                 var releaseUrl = $"https://musicbrainz.org/ws/2/release?label={labelId}&inc=artist-credits&limit={limit}&offset={offset}&fmt=json";
@@ -241,7 +65,6 @@ namespace MusicBeePlugin.Retrievers
 
             } while (hasMoreResults);
 
-            // Step 2: Filter unique releases if necessary, selecting best
             if (uniqueNamesOnly)
             {
                 releasesData = releasesData
@@ -258,7 +81,6 @@ namespace MusicBeePlugin.Retrievers
                     .ToList();
             }
 
-            // Step 3: Get cover art urls and construct release objects
             var releases = new List<Release>();
             var semaphore = new SemaphoreSlim(15);
 
@@ -496,30 +318,8 @@ namespace MusicBeePlugin.Retrievers
                     }
                 }
             }
-            
+
             return songs;
-        }
-
-        public class Release
-        {
-            public string Id { get; set; }
-            public string Name { get; set; }
-            public string Date { get; set; }
-            public string CoverArtUrl { get; set; }
-            public string Artist { get; set; }
-            public bool IsReleaseGroup { get; set; }
-        }
-
-        public class Song
-        {
-            public string Id { get; set; }
-            public string Title { get; set; }
-            public string Artist { get; set; }
-            public int Length { get; set; }
-            public int TrackNumber { get; set; }
-            public int TotalTracks { get; set; }
-            public int DiscNumber { get; set; }
-            public int TotalDiscs { get; set; }
         }
     }
 }

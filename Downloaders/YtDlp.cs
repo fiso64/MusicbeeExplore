@@ -1,44 +1,11 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace MusicBeePlugin
 {
     internal class YtDlp
     {
-        public string GetFirstLink(string query)
-        {
-            string command = "yt-dlp";
-            string arguments = $"\"ytsearch:{Utils.EscapeQuotes(query)}\" --get-id";
-
-            ProcessStartInfo startInfo = new ProcessStartInfo
-            {
-                FileName = command,
-                Arguments = arguments,
-                RedirectStandardOutput = true,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            };
-
-            using (Process process = Process.Start(startInfo))
-            {
-                string output = process.StandardOutput.ReadToEnd();
-                process.WaitForExit();
-                string[] videoIds = output.Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries);
-                if (videoIds.Length > 0)
-                {
-                    string videoId = videoIds[0].Trim();
-                    return $"https://www.youtube.com/watch?v={videoId}";
-                }
-            }
-
-            return null;
-        }
-
         public async Task<string> SearchAndDownload(string searchQuery, string outPathNoExt, bool showWindow=false, Action<string> onPrint=null /*, CancellationToken cancellationToken*/)
         {
             try

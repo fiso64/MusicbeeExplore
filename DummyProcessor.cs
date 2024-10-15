@@ -13,6 +13,15 @@ namespace MusicBeePlugin.Services
 {
     public class DummyProcessor
     {
+        public static string RemoveIdentifier(string field)
+        {
+            if (field.StartsWith(IDENTIFIER))
+            {
+                return field.Substring(IDENTIFIER.Length);
+            }
+            return field;
+        }
+
         public async Task ProcessPlayingTrack()
         {
             string comment = mbApi.NowPlaying_GetFileTag(MetaDataType.Comment);
@@ -20,8 +29,7 @@ namespace MusicBeePlugin.Services
             if (!comment.Contains(IDENTIFIER))
                 return;
 
-            string jsonPart = comment.Replace(IDENTIFIER, string.Empty);
-            var data = JsonConvert.DeserializeObject<Models.CommentData>(jsonPart);
+            var data = JsonConvert.DeserializeObject<Models.CommentData>(comment);
 
             switch (data.State)
             {
@@ -37,12 +45,12 @@ namespace MusicBeePlugin.Services
                     dummy = DummyFile.FromNowPlaying(mbApi, DummySongFields.Artist | DummySongFields.Title | DummySongFields.FileUrl, data);
                     await ProcessUnloadedTrack(dummy);
                     break;
-                case State.LinkTrack:
-                    MusicBeeHelpers.Pause();
-                    Debug.WriteLine("Paused track: " + mbApi.NowPlaying_GetFileTag(MetaDataType.TrackTitle));
-                    dummy = DummyFile.FromNowPlaying(mbApi, DummySongFields.Artist | DummySongFields.Title | DummySongFields.FileUrl, data);
-                    ProcessLinkedTrack(dummy);
-                    break;
+                //case State.LinkTrack:
+                //    MusicBeeHelpers.Pause();
+                //    Debug.WriteLine("Paused track: " + mbApi.NowPlaying_GetFileTag(MetaDataType.TrackTitle));
+                //    dummy = DummyFile.FromNowPlaying(mbApi, DummySongFields.Artist | DummySongFields.Title | DummySongFields.FileUrl, data);
+                //    ProcessLinkedTrack(dummy);
+                //    break;
                 default:
                     break;
             }
@@ -55,8 +63,8 @@ namespace MusicBeePlugin.Services
                 throw new ArgumentException("Album artist, album, year cannot be null");
             }
 
-            var retriever = RetrieverRegistry.GetAlbumRetriever(dummy.RetrieverData.Source, config);
-            var songs = await retriever.GetReleaseTracksAsync(dummy.RetrieverData);
+            var retriever = RetrieverRegistry.GetAlbumRetriever(dummy.CommentData.RetrieverData.Source, config);
+            var songs = await retriever.GetReleaseTracksAsync(dummy.CommentData.RetrieverData);
 
             string albumFolder = Path.GetDirectoryName(dummy.FileUrl);
 
@@ -75,10 +83,9 @@ namespace MusicBeePlugin.Services
                     continue;
                 }
 
-                var commentData = Models.CommentData.FromTrack(song, dummy.RetrieverData);
                 var nums = Utils.ParseTrackAndDisc(song.TrackPosition, song.DiscPosition);
 
-                var dummyFileInfo = new DummyManager.DummyFileInfo
+                var dummyFileInfo = new DummyCreator.DummyFileInfo
                 {
                     FilePath = filePath,
                     Tags = new Dictionary<MetaDataType, string>
@@ -93,7 +100,7 @@ namespace MusicBeePlugin.Services
                         { MetaDataType.TrackCount, nums.trackCount },
                         { MetaDataType.DiscCount, nums.discCount }
                     },
-                    CommentData = commentData,
+                    CommentData = CommentData.FromTrack(song, dummy.CommentData),
                     Image = dummy.Image
                 };
 
@@ -122,7 +129,7 @@ namespace MusicBeePlugin.Services
                 throw new ArgumentException("Artist, title, fileUrl cannot be null.");
             }
 
-            string searchQuery = $"{dummy.Artist} - {dummy.Title}";
+            string searchQuery = $"{RemoveIdentifier(dummy.Artist)} - {dummy.Title}";
             var downloader = new YtDlp();
 
             if (config.UseMediaPlayer)
@@ -196,7 +203,7 @@ namespace MusicBeePlugin.Services
                 bool stillSame = mbApi.NowPlaying_GetFileUrl() == dummy.FileUrl;
 
                 dummy.FileUrl = downloadedPath;
-                dummy.RetrieverData.State = State.Loaded;
+                dummy.CommentData.State = State.Loaded;
 
                 dummy.SetFileTags(mbApi);
 
@@ -224,38 +231,37 @@ namespace MusicBeePlugin.Services
             }
         }
 
-        public void ProcessLinkedTrack(DummyFile dummy)
-        {
-            if (dummy.RetrieverData.AdditionalData.TryGetValue("LibraryPath", out string libraryPath))
-            {
-                if (File.Exists(libraryPath))
-                {
-                    try
-                    {
-                        Debug.WriteLine($"Playing linked track: {libraryPath}");
-                        int currentIndex = mbApi.NowPlayingList_GetCurrentIndex();
-                        mbApi.NowPlayingList_QueueNext(libraryPath);
-                        mbApi.Player_PlayNextTrack();
-                        mbApi.NowPlayingList_RemoveAt(currentIndex);
-                    }
-                    catch (Exception ex)
-                    {
-                        Debug.WriteLine($"Error playing linked track: {ex.Message}");
-                        MessageBox.Show($"Error playing linked track: {ex.Message}");
-                    }
-                }
-                else
-                {
-                    MessageBox.Show($"The linked track file no longer exists: {libraryPath}");
-                    // Optionally, you could set the state back to UnloadedTrack here
-                    // dummy.RetrieverData.State = State.UnloadedTrack;
-                    // dummy.SetFileTags(mbApi);
-                }
-            }
-            else
-            {
-                MessageBox.Show("Error: Linked track path not found in metadata.");
-            }
-        }
+        //public void ProcessLinkedTrack(DummyFile dummy)
+        //{
+        //    if (dummy.CommentData.AdditionalData.TryGetValue("LibraryPath", out string libraryPath))
+        //    {
+        //        if (File.Exists(libraryPath))
+        //        {
+        //            try
+        //            {
+        //                Debug.WriteLine($"Playing linked track: {libraryPath}");
+        //                int currentIndex = mbApi.NowPlayingList_GetCurrentIndex();
+        //                mbApi.NowPlayingList_QueueNext(libraryPath);
+        //                mbApi.Player_PlayNextTrack();
+        //                mbApi.NowPlayingList_RemoveAt(currentIndex);
+        //            }
+        //            catch (Exception ex)
+        //            {
+        //                Debug.WriteLine($"Error playing linked track: {ex.Message}");
+        //                MessageBox.Show($"Error playing linked track: {ex.Message}");
+        //            }
+        //        }
+        //        else
+        //        {
+        //            MessageBox.Show($"The linked track file no longer exists: {libraryPath}");
+        //            // dummy.RetrieverData.State = State.UnloadedTrack;
+        //            // dummy.SetFileTags(mbApi);
+        //        }
+        //    }
+        //    else
+        //    {
+        //        MessageBox.Show("Error: Linked track path not found in metadata.");
+        //    }
+        //}
     }
 }

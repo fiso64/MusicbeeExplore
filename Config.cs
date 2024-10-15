@@ -1,9 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System;
 using System.IO;
 using Newtonsoft.Json;
 
@@ -13,7 +8,7 @@ namespace MusicBeePlugin
     {
         private readonly string ConfigFilePath = null;
 
-        public bool OpenInFilterTab { get; set; } = false;
+        public bool OpenInNewTab { get; set; } = false;
         public bool ShowDownloadWindow { get; set; } = true;
         public bool QueueTracksAfterAlbumLoad { get; set; } = false;
         public bool GetPopularTracks { get; set; } = false;

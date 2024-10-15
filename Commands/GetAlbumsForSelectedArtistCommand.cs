@@ -9,7 +9,6 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using MusicBeePlugin.Models;
 using MusicBeePlugin.Retrievers;
-using Newtonsoft.Json;
 using static MusicBeePlugin.Plugin;
 using MusicBeePlugin.Services;
 
@@ -26,8 +25,7 @@ namespace MusicBeePlugin.Commands
 
         public async Task Execute()
         {
-            string artistQuery = GetArtistNameQuery();
-            string entityName = null;
+            string artistQuery = MusicBeeHelpers.GetSearchBoxTextIfFocused() ?? MusicBeeHelpers.GetFirstSelected().artist;
 
             if (string.IsNullOrEmpty(artistQuery))
             {
@@ -35,6 +33,7 @@ namespace MusicBeePlugin.Commands
                 return;
             }
 
+            string entityName = null;
             string cachePath = Path.Combine(mbApi.Setting_GetPersistentStoragePath(), Plugin.CACHE_FOLDER);
             string hiddenCachePath = Path.Combine(mbApi.Setting_GetPersistentStoragePath(), Plugin.CACHE_HIDDEN_FOLDER);
 
@@ -43,7 +42,7 @@ namespace MusicBeePlugin.Commands
                 await Plugin.toggleCachedAlbumsCommand.Execute();
 
                 var libraryQuery = MusicBeeHelpers.ConstructLibraryQuery(
-                    (MetaDataType.Comment, ComparisonType.Contains, "<<MBE>>"),
+                    (MetaDataType.Comment, ComparisonType.Contains, Plugin.IDENTIFIER),
                     (MetaDataType.Artist, ComparisonType.Contains, artistQuery)
                 );
 
@@ -81,14 +80,7 @@ namespace MusicBeePlugin.Commands
 
                 releases = SkipExisting(releases);
 
-                if (releases.Count == 0 && !config.OpenInFilterTab)
-                {
-                    MessageBox.Show("No additional releases found");
-                }
-                else
-                {
-                    await CreateDummyAlbums(entityName, releases, progressWindow);
-                }
+                await CreateDummyAlbums(entityName, releases, progressWindow);
 
                 Debug.WriteLine($"Done");
                 progressWindow.UpdateStatus("Done");
@@ -99,41 +91,18 @@ namespace MusicBeePlugin.Commands
                 Debug.WriteLine("Operation cancelled");
             }
 
-            mbApi.MB_RefreshPanels();
+            if (entityName == null)
+                return;
 
-            if (Plugin.config.OpenInFilterTab && entityName != null)
-                mbApi.MB_OpenFilterInTab(MetaDataType.Comment, ComparisonType.Contains, "<<MBE>>", MetaDataType.AlbumArtist, ComparisonType.Contains, entityName);
+            string group = CommentData.GetGroup(MbeType.MoreAlbums, entityName);
+            MusicBeeHelpers.OpenMbeGroup(group, config.OpenInNewTab);
 
             if (config.GetPopularTracks)
             {
                 await Plugin.getPopularTracksForArtistCommand.Execute();
             }
-        }
 
-        private string GetArtistNameQuery()
-        {
-            var hwnd = mbApi.MB_GetWindowHandle();
-
-            string text = "";
-
-            var focus = WinApiHelpers.GetFocus();
-
-            if (WinApiHelpers.GetClassNN(focus).Contains("EDIT"))
-            {
-                text = WinApiHelpers.GetText(focus);
-            }
-            else
-            {
-                mbApi.Library_QueryFilesEx("domain=SelectedFiles", out string[] files);
-
-                if (files != null && files.Length > 0)
-                {
-                    text = mbApi.Library_GetFileTag(files[0], MetaDataType.Artist);
-                }
-            }
-
-            Debug.WriteLine($"Query text: {text}");
-            return text.Trim();
+            mbApi.MB_RefreshPanels();
         }
 
         private List<Models.Release> SkipExisting(List<Models.Release> releases)
@@ -172,6 +141,8 @@ namespace MusicBeePlugin.Commands
 
         private async Task CreateDummyAlbums(string entityName, List<Models.Release> releases, ProgressWindow progressWindow)
         {
+            bool USE_ENTITY_NAME = false;
+
             string cachePath = Path.Combine(mbApi.Setting_GetPersistentStoragePath(), Plugin.CACHE_FOLDER);
 
             int totalReleases = releases.Count;
@@ -213,18 +184,38 @@ namespace MusicBeePlugin.Commands
                             }
                         }
 
-                        var dummyFileInfo = new DummyManager.DummyFileInfo
+                        string trackTitle;
+                        string albumArtist;
+
+                        if (USE_ENTITY_NAME)
+                        {
+                            trackTitle = $"[Load Album]{(release.Artist != entityName && USE_ENTITY_NAME ? $" / By {release.Artist}" : "")}";
+                            albumArtist = string.IsNullOrWhiteSpace(release.Artist) || release.Artist == entityName ? entityName : $"{entityName}; {release.Artist}";
+                        }
+                        else
+                        {
+                            trackTitle = $"[Load Album]";
+                            albumArtist = release.Artist;
+                        }
+
+                        var dummyFileInfo = new DummyCreator.DummyFileInfo
                         {
                             FilePath = Path.Combine(albumDir, "__Load Album__.opus"),
                             Tags = new Dictionary<MetaDataType, string>
                             {
-                                { MetaDataType.TrackTitle, $"[Load Album]{(release.Artist != entityName ? $" / By {release.Artist}" : "")}" },
-                                { MetaDataType.Artist, entityName },
-                                { MetaDataType.AlbumArtist, string.IsNullOrWhiteSpace(release.Artist) || release.Artist == entityName ? entityName : $"{entityName}; {release.Artist}" },
+                                { MetaDataType.TrackTitle, trackTitle },
+                                { MetaDataType.Artist, albumArtist },
+                                { MetaDataType.AlbumArtist, albumArtist },
                                 { MetaDataType.Album, release.Title },
                                 { MetaDataType.Year, release.Date }
                             },
-                            CommentData = Models.CommentData.FromRelease(release),
+                            CommentData = new CommentData
+                            {
+                                Type = MbeType.MoreAlbums,
+                                State = State.UnloadedAlbum,
+                                Group = CommentData.GetGroup(MbeType.MoreAlbums, entityName, release.AppearanceOnly || !release.Artist.ToLower().Contains(entityName.ToLower()) ? MbeSubgroup.Appearance : MbeSubgroup.None),
+                                RetrieverData = release.RetrieverData
+                            },
                             Image = coverImage
                         };
 

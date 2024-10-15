@@ -1,13 +1,7 @@
-﻿using System;
+﻿using Newtonsoft.Json;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Collections.Generic;
-using System.Text.Json.Serialization;
-using Newtonsoft.Json;
 
-namespace MusicBeePlugin.Retrievers.DiscogsData
+namespace MusicBeePlugin.Api.Discogs
 {
     public enum SearchEntityType
     {
@@ -108,7 +102,7 @@ namespace MusicBeePlugin.Retrievers.DiscogsData
 
         [JsonProperty("type")]
         public SearchEntityType Type { get; set; }
-    }   
+    }
 
     public class ReleaseDetail
     {

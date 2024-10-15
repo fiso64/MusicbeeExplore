@@ -18,11 +18,13 @@ namespace MusicBeePlugin.Commands
     {
         public async Task Execute()
         {
-            var (artist, album) = GetQuery();
+            var x = MusicBeeHelpers.GetFirstSelected();
+            string artist = x.albumArtist;
+            string album = x.album;
 
             if (string.IsNullOrEmpty(artist) || string.IsNullOrEmpty(album))
             {
-                MessageBox.Show("No artist or album selected");
+                MessageBox.Show("No album selected");
                 return;
             }
 
@@ -44,17 +46,15 @@ namespace MusicBeePlugin.Commands
 
                 progressWindow.UpdateStatus($"Found {similarAlbums.Count} similar albums");
 
-                string group = $"SimilarTo: {artist} - {album}";
-
-                await CreateDummyAlbums(artist, album, group, similarAlbums, progressWindow);
+                await CreateDummyAlbums(artist, album, similarAlbums, progressWindow);
 
                 Debug.WriteLine($"Done");
                 progressWindow.UpdateStatus("Done");
                 progressWindow.Close();
 
+                string group = CommentData.GetGroup(MbeType.SimilarAlbums, $"{artist} - {album}");
+                MusicBeeHelpers.OpenMbeGroup(group, config.OpenInNewTab);
                 mbApi.MB_RefreshPanels();
-
-                mbApi.MB_OpenFilterInTab(MetaDataType.Comment, ComparisonType.Contains, "<<MBE>>", MetaDataType.Comment, ComparisonType.Contains, group);
             }
             catch (OperationCanceledException)
             {
@@ -66,22 +66,9 @@ namespace MusicBeePlugin.Commands
             }
         }
 
-        private (string artist, string album) GetQuery()
+        private async Task CreateDummyAlbums(string originalArtist, string originalAlbum, List<Release> releases, ProgressWindow progressWindow)
         {
-            mbApi.Library_QueryFilesEx("domain=SelectedFiles", out string[] files);
-
-            if (files == null || files.Length == 0)
-            {
-                return (null, null);
-            }
-
-            string artist = mbApi.Library_GetFileTag(files[0], MetaDataType.AlbumArtist);
-            string album = mbApi.Library_GetFileTag(files[0], MetaDataType.Album);
-            return (artist, album);
-        }
-
-        private async Task CreateDummyAlbums(string originalArtist, string originalAlbum, string group, List<Release> releases, ProgressWindow progressWindow)
-        {
+            string group = CommentData.GetGroup(MbeType.SimilarAlbums, $"{originalArtist} - {originalAlbum}");
             string cachePath = Path.Combine(mbApi.Setting_GetPersistentStoragePath(), CACHE_FOLDER);
             string artistDir = Path.Combine(cachePath, originalArtist.SafeFileName(), $"__{group}".SafeFileName());
 
@@ -123,9 +110,7 @@ namespace MusicBeePlugin.Commands
                             }
                         }
 
-                        release.AdditionalData["Group"] = group;
-
-                        var dummyFileInfo = new DummyManager.DummyFileInfo
+                        var dummyFileInfo = new DummyCreator.DummyFileInfo
                         {
                             FilePath = Path.Combine(albumDir, "__Load Album__.opus"),
                             Tags = new Dictionary<MetaDataType, string>
@@ -138,11 +123,10 @@ namespace MusicBeePlugin.Commands
                             },
                             CommentData = new CommentData
                             {
-                                Id = release.Id,
-                                Source = release.Source,
+                                Type = MbeType.SimilarAlbums,
                                 State = State.UnloadedAlbum,
-                                Role = Role.Main,
-                                AdditionalData = release.AdditionalData
+                                Group = group,
+                                RetrieverData = release.RetrieverData
                             },
                             Image = coverImage
                         };

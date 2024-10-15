@@ -5,7 +5,6 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using MusicBeePlugin.Models;
 using MusicBeePlugin.Retrievers;
-using Newtonsoft.Json;
 using static MusicBeePlugin.Plugin;
 using MusicBeePlugin.Services;
 
@@ -15,7 +14,7 @@ namespace MusicBeePlugin.Commands
     {
         public async Task Execute()
         {
-            string artistQuery = GetArtistNameQuery();
+            string artistQuery = MusicBeeHelpers.GetSearchBoxTextIfFocused() ?? MusicBeeHelpers.GetFirstSelected().artist;
 
             if (string.IsNullOrEmpty(artistQuery))
             {
@@ -46,6 +45,9 @@ namespace MusicBeePlugin.Commands
                 progressWindow.UpdateStatus("Done");
                 progressWindow.Close();
 
+                string group = CommentData.GetGroup(MbeType.PopularTracks, artistQuery);
+                MusicBeeHelpers.OpenMbeGroup(group, config.OpenInNewTab);
+
                 mbApi.MB_RefreshPanels();
             }
             catch (OperationCanceledException)
@@ -56,32 +58,6 @@ namespace MusicBeePlugin.Commands
             {
                 MessageBox.Show($"Error getting popular tracks: {ex.Message}");
             }
-        }
-
-        private string GetArtistNameQuery()
-        {
-            var hwnd = mbApi.MB_GetWindowHandle();
-
-            string text = "";
-
-            var focus = WinApiHelpers.GetFocus();
-
-            if (WinApiHelpers.GetClassNN(focus).Contains("EDIT"))
-            {
-                text = WinApiHelpers.GetText(focus);
-            }
-            else
-            {
-                mbApi.Library_QueryFilesEx("domain=SelectedFiles", out string[] files);
-
-                if (files != null && files.Length > 0)
-                {
-                    text = mbApi.Library_GetFileTag(files[0], MetaDataType.Artist);
-                }
-            }
-
-            System.Diagnostics.Debug.WriteLine($"Query text: {text}");
-            return text.Trim();
         }
 
         private async Task CreateDummyTracks(string artist, List<Track> tracks, ProgressWindow progressWindow)
@@ -95,7 +71,7 @@ namespace MusicBeePlugin.Commands
                 (track, index) =>
                 {
                     int popularityRank = index + 1;
-                    return new DummyManager.DummyFileInfo
+                    return new DummyCreator.DummyFileInfo
                     {
                         FilePath = Path.Combine(artistDir, $"{popularityRank:D2} - {track.Title}.opus".SafeFileName()),
                         Tags = new Dictionary<MetaDataType, string>
@@ -109,10 +85,10 @@ namespace MusicBeePlugin.Commands
                         },
                         CommentData = new CommentData
                         {
-                            Id = track.Id,
-                            Source = Retriever.Lastfm,
+                            Type = MbeType.PopularTracks,
                             State = State.UnloadedTrack,
-                            Role = Role.Main,
+                            Group = CommentData.GetGroup(MbeType.PopularTracks, artist),
+                            RetrieverData = track.RetrieverData,
                         }
                     };
                 },

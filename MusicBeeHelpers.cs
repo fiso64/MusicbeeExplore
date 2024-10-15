@@ -1,10 +1,8 @@
 ﻿using MusicBeePlugin.Models;
-using System;
+using MusicBeePlugin.Services;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Windows.Forms;
-using System.Xml;
 using System.Xml.Linq;
 using static MusicBeePlugin.Plugin;
 
@@ -46,6 +44,68 @@ namespace MusicBeePlugin
             {
                 mbApi.Player_PlayPause();
             }
+        }
+
+        public static string GetSearchBoxTextIfFocused()
+        {
+            var focus = WinApiHelpers.GetFocus();
+
+            if (WinApiHelpers.GetClassNN(focus).Contains("EDIT"))
+            {
+                return WinApiHelpers.GetText(focus);
+            }
+
+            return null;
+        }
+
+        public static (string artist, string title, string album, string albumArtist) GetFirstSelected()
+        {
+            mbApi.Library_QueryFilesEx("domain=SelectedFiles", out string[] files);
+
+            if (files == null || files.Length == 0)
+            {
+                return default;
+            }
+
+            string artist = DummyProcessor.RemoveIdentifier(mbApi.Library_GetFileTag(files[0], MetaDataType.Artist));
+            string title = mbApi.Library_GetFileTag(files[0], MetaDataType.TrackTitle);
+            string album = mbApi.Library_GetFileTag(files[0], MetaDataType.Album);
+            string albumArtist = DummyProcessor.RemoveIdentifier(mbApi.Library_GetFileTag(files[0], MetaDataType.AlbumArtist));
+            return (artist, title, album, albumArtist);
+        }
+
+        public static void OpenMbeGroup(string group, bool newTab)
+        {
+            if (newTab)
+            {
+                SendKeys.SendWait("^t");
+            }
+            mbApi.MB_OpenFilterInTab(MetaDataType.Comment, ComparisonType.Contains, Plugin.IDENTIFIER, MetaDataType.Comment, ComparisonType.Contains, group);
+        }
+
+        public static bool HasAnyMbeCache(MbeType type, Retriever source)
+        {
+            var query = ConstructLibraryQuery(
+                (MetaDataType.Comment, ComparisonType.Contains, Plugin.IDENTIFIER),
+                (MetaDataType.Comment, ComparisonType.Contains, source.ToString()),
+                (MetaDataType.Comment, ComparisonType.Contains, type.ToString())
+            );
+
+            mbApi.Library_QueryFilesEx(query, out string[] files);
+
+            return files != null && files.Length > 0;
+        }
+
+        public static bool HasAnyMbeCache(MbeType type)
+        {
+            var query = ConstructLibraryQuery(
+                (MetaDataType.Comment, ComparisonType.Contains, Plugin.IDENTIFIER),
+                (MetaDataType.Comment, ComparisonType.Contains, type.ToString())
+            );
+
+            mbApi.Library_QueryFilesEx(query, out string[] files);
+
+            return files != null && files.Length > 0;
         }
 
         //public void SetSearchBoxText(string query)

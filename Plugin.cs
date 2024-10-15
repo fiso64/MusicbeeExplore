@@ -1,21 +1,12 @@
 ﻿using System;
 using System.Drawing;
 using System.Windows.Forms;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Threading;
 using System.IO;
-using System.Threading.Tasks;
-using System.Linq;
-using System.Net.Http;
-using MusicBeePlugin.Retrievers;
-using Newtonsoft.Json;
 
 using MusicBeePlugin.Models;
 using MusicBeePlugin.Commands;
 using MusicBeePlugin.Services;
-
-// todo: find a way to display suggested albums (from discogs, lastfm, maybe bandcamp) for a given album
 
 // todo: fix song skipping bug
 //       For some reason the plugin does not receive any notifications while downloading a song,
@@ -26,12 +17,18 @@ using MusicBeePlugin.Services;
 // todo: make track playback faster
 // todo: try to reduce false youtube downloads
 // todo: bandcamp retrieval and playback
+// todo: bandcamp and discogs album suggestions
+
+// Known issues:
+// - Do not change the track while a track is being downloaded. For some reason the plugin does not receive any notifications while downloading a song, causing it to skip through the remaining songs and then download all of them at once.
+// - Scrobbling does not work since artist names are prefixed with an identifier. Add the cache folder to excluded locations in the lastfm plugin settings.
+// - The wavebar is not updated after dummy tracks are downloaded. The progress bar works fine.
 
 namespace MusicBeePlugin
 {
     public partial class Plugin
     {
-        public const string IDENTIFIER = "<<MBE>>";
+        public const string IDENTIFIER = "巽 ";
         public const string CACHE_FOLDER = "MusicBeeExplore/cache";
         public const string CACHE_HIDDEN_FOLDER = "MusicBeeExplore/cache-hidden";
         public const string CONFIG_FILE = "MusicBeeExplore/mbe.conf";
@@ -42,12 +39,11 @@ namespace MusicBeePlugin
 
         public static MusicBeeApiInterface mbApi;
         public static Config config;
-        public static DummyManager dummyManager;
+        public static DummyCreator dummyManager;
         public static DummyProcessor dummyProcessor;
 
         public static ICommand getAlbumsForSelectedArtistDiscogsCommand;
         public static ICommand getAlbumsForSelectedArtistMusicBrainzCommand;
-        public static ICommand deleteSelectedArtistCacheCommand;
         public static ICommand loadSelectedAlbumsCommand;
         public static ICommand toggleCachedAlbumsCommand;
         public static ICommand getPopularTracksForArtistCommand;
@@ -71,17 +67,23 @@ namespace MusicBeePlugin
             about.ReceiveNotifications = (ReceiveNotificationFlags.PlayerEvents);
             about.ConfigurationPanelHeight = 160;
 
+            Startup();
+
+            return about;
+        }
+
+        public void Startup()
+        {
             config = new Config(Path.Combine(mbApi.Setting_GetPersistentStoragePath(), CONFIG_FILE));
             config.Load();
 
             string cachePath = Path.Combine(mbApi.Setting_GetPersistentStoragePath(), CACHE_FOLDER);
             string dummyPath = Path.Combine(mbApi.Setting_GetPersistentStoragePath(), DUMMY_FILE);
-            dummyManager = new DummyManager(cachePath, dummyPath);
+            dummyManager = new DummyCreator(cachePath, dummyPath);
             dummyProcessor = new DummyProcessor();
 
             getAlbumsForSelectedArtistDiscogsCommand = new GetAlbumsForSelectedArtistCommand(Retriever.Discogs);
             getAlbumsForSelectedArtistMusicBrainzCommand = new GetAlbumsForSelectedArtistCommand(Retriever.MusicBrainz);
-            deleteSelectedArtistCacheCommand = new DeleteSelectedArtistCacheCommand();
             loadSelectedAlbumsCommand = new LoadSelectedAlbumsCommand();
             toggleCachedAlbumsCommand = new ToggleCachedAlbumsCommand();
             getPopularTracksForArtistCommand = new GetPopularTracksForArtistCommand();
@@ -97,13 +99,10 @@ namespace MusicBeePlugin
 
             addCommand("Discogs Query", "MusicBeeExplore: Discogs: Query selected or search box artist", getAlbumsForSelectedArtistDiscogsCommand);
             addCommand("MusicBrainz Query", "MusicBeeExplore: MusicBrainz: Query selected or search box artist", getAlbumsForSelectedArtistMusicBrainzCommand);
-            addCommand("Delete Artist Cache", "MusicBeeExplore: Delete cache for selected album artist", deleteSelectedArtistCacheCommand);
             addCommand("Load Selected Albums", "MusicBeeExplore: Load selected albums", loadSelectedAlbumsCommand);
             addCommand("Toggle Cached Albums", "MusicBeeExplore: Toggle cached albums", toggleCachedAlbumsCommand);
             addCommand("Get Popular Tracks", "MusicBeeExplore: Last.fm: Get popular tracks for selected artist", getPopularTracksForArtistCommand);
             addCommand("Get Similar Albums", "MusicBeeExplore: Last.fm: Get similar albums for selected album", getSimilarAlbumsCommand);
-
-            return about;
         }
 
         public bool Configure(IntPtr panelHandle)
@@ -160,7 +159,7 @@ namespace MusicBeePlugin
                     verticalOffset += textBoxPanel.Height;
                 }
 
-                addCheckbox("Open in filter tab", config.OpenInFilterTab, (chk) => tempConfig.OpenInFilterTab = chk);
+                addCheckbox("Open results in new tab", config.OpenInNewTab, (chk) => tempConfig.OpenInNewTab = chk);
                 addCheckbox("Show download window", config.ShowDownloadWindow, (chk) => tempConfig.ShowDownloadWindow = chk);
                 addCheckbox("Queue tracks after loading album", config.QueueTracksAfterAlbumLoad, (chk) => tempConfig.QueueTracksAfterAlbumLoad = chk);
                 addCheckbox("Get popular tracks when loading albums", config.GetPopularTracks, (chk) => tempConfig.GetPopularTracks = chk);
@@ -200,6 +199,9 @@ namespace MusicBeePlugin
         {
             switch (type)
             {
+                //case NotificationType.PluginStartup:
+                //    Startup();
+                //    break;
                 case NotificationType.TrackChanged:
                     Debug.WriteLine($"Now playing: {mbApi.NowPlaying_GetFileTag(MetaDataType.Artist)} - {mbApi.NowPlaying_GetFileTag(MetaDataType.TrackTitle)}");
                     dummyProcessor.ProcessPlayingTrack();
