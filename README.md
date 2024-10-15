@@ -81,7 +81,7 @@ The plugin adds several commands:
 
 1. Discogs Query: Search for albums by the selected or search box artist on Discogs
 2. MusicBrainz Query: Search for albums by the selected or search box artist on MusicBrainz
-3. Load Selected Albums: Import the selected albums into MusicBee
+3. Load Selected Albums: Load the tracks of the selected albums. Alternatively, you can double-click on an album in the results.
 4. Toggle Cached Albums: Show or hide cached albums
 5. Get Popular Tracks: Fetch popular tracks for the selected artist from Last.fm
 6. Get Similar Albums: Find similar albums for the selected album
