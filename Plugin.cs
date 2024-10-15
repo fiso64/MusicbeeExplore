@@ -19,11 +19,6 @@ using MusicBeePlugin.Services;
 // todo: bandcamp retrieval and playback
 // todo: bandcamp and discogs album suggestions
 
-// Known issues:
-// - Do not change the track while a track is being downloaded. For some reason the plugin does not receive any notifications while downloading a song, causing it to skip through the remaining songs and then download all of them at once.
-// - Scrobbling does not work since artist names are prefixed with an identifier. Add the cache folder to excluded locations in the lastfm plugin settings.
-// - The wavebar is not updated after dummy tracks are downloaded. The progress bar works fine.
-
 namespace MusicBeePlugin
 {
     public partial class Plugin
