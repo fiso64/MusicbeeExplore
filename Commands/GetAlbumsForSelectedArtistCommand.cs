@@ -83,7 +83,7 @@ namespace MusicBeePlugin.Commands
 
                 if (releases.Count == 0)
                 {
-                    MessageBox.Show($"No releases found for: {artistQuery}");
+                    MessageBox.Show($"No releases found for {artistData.Name}");
                     progressWindow.Close();
                     return;
                 }
@@ -113,7 +113,7 @@ namespace MusicBeePlugin.Commands
             }
             else if (!newResults)
             {
-                MessageBox.Show("No additional results found");
+                MessageBox.Show($"No additional results found for {artistData.Name}");
             }
 
             if (config.GetPopularTracks)
