@@ -45,7 +45,7 @@ namespace MusicBeePlugin.Services
                 string value = tag.Value;
                 if ((tag.Key == MetaDataType.Artist || tag.Key == MetaDataType.AlbumArtist) && !value.StartsWith(IDENTIFIER))
                 {
-                    value = IDENTIFIER + value;
+                    value = DummyProcessor.AddIdentifier(value);
                 }
                 mbApi.Library_SetFileTag(info.FilePath, tag.Key, value);
             }

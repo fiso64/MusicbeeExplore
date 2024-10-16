@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using Newtonsoft.Json;
+using System.ComponentModel;
 
 namespace MusicBeePlugin
 {
@@ -8,11 +9,23 @@ namespace MusicBeePlugin
     {
         private readonly string ConfigFilePath = null;
 
+        public enum PlayAction
+        {
+            [Description("Download and Play")]
+            DownloadAndPlay,
+
+            [Description("Stream with External Player")]
+            ExternalPlayerStream,
+
+            [Description("Stream with MusicBee")]
+            MusicBeeStream
+        }
+
+        public PlayAction OnPlay { get; set; } = PlayAction.DownloadAndPlay;
         public bool OpenInNewTab { get; set; } = false;
         public bool ShowDownloadWindow { get; set; } = true;
         public bool QueueTracksAfterAlbumLoad { get; set; } = false;
         public bool GetPopularTracks { get; set; } = false;
-        public bool UseMediaPlayer { get; set; } = false;
         public string DiscogsToken { get; set; } = null;
         public string LastfmApiKey { get; set; } = null;
         public string MediaPlayerCommand { get; set; } = "mpv {url} --no-video";

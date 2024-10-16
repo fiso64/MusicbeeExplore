@@ -1,6 +1,6 @@
 # MusicbeeExplore
 
-MusicbeeExplore is a plugin for MusicBee that allows users to browse MusicBrainz or Discogs in the player. It is intended to be a replacement for the "More Albums" section in the music explorer view by fetching albums from more comprehensive sources and allowing you to play the songs in their entirety, rather than just a preview. Implemented in a very hacky way since the MusicBee API does not support modifying the music explorer view (please see the known issues section).
+MusicbeeExplore is a plugin for MusicBee that allows users to browse MusicBrainz or Discogs in the player. It is intended to be a replacement for the "More Albums" section in the music explorer view by fetching albums from more comprehensive sources and allowing you to play the songs in full, rather than just a preview. Implemented in a very hacky way since the MusicBee API does not support modifying the music explorer view (please see the known issues section).
 
 ## Features
 
@@ -14,17 +14,17 @@ MusicbeeExplore is a plugin for MusicBee that allows users to browse MusicBrainz
 
 The plugin integrates with MusicBee's interface and allows users to query external music databases (MusicBrainz and Discogs) for artist discographies and album information.
 
-1. When a user searches for an artist or album, the plugin queries the selected database (MusicBrainz or Discogs) and retrieves the discography information.
+1. When a user searches for an artist, the plugin queries the selected database (MusicBrainz or Discogs) and retrieves the discography information.
 
-2. The plugin creates dummy files for each track in the album. These dummy files contain metadata but no actual audio content.
+2. The plugin creates dummy files for every album in the artist's discography. These dummy files contain metadata but no actual audio content, and simply serve as "links" to load the album in MusicBee.
 
 3. When a user attempts to play a dummy file, the plugin intercepts the playback:
    - For unloaded albums, it fetches the track list and creates dummy files for all tracks in the album.
    - For unloaded tracks, it uses yt-dlp to search for and download the audio from YouTube.
 
-4. The downloaded audio is saved in the opus format and replaces the dummy file. The metadata is then updated to reflect the downloaded state.
+4. The downloaded audio is saved in the opus format and replaces the dummy file. The file is then re-queued for playback.
 
-5. If configured, the plugin can use mpv to stream audio directly without downloading (although it takes about the same amount of time to start playing, at least for minute-long songs).
+5. If configured, the plugin can stream the audio directly without downloading (although it takes about the same amount of time until playback starts, at least for minute-long songs).
 
 ## Requirements
 
@@ -61,8 +61,7 @@ To enhance your browsing experience, it's recommended to create a custom view fo
 1. Create a virtual tag:
    - Go to Edit > Preferences > Tags (1)
    - In the "Virtual Tags" section, click "Add"
-   - Name the tag "MbeHeader"
-   - Set its value to: 
+   - Name the tag "MbeHeader", and set its value to: 
      ```
      $If($Contains(<Comment>,Appearance),"More Albums: Appears On","More Albums")
      ```
@@ -82,12 +81,14 @@ The plugin adds several commands:
 
 1. Discogs Query: Search for albums by the selected or search box artist on Discogs
 2. MusicBrainz Query: Search for albums by the selected or search box artist on MusicBrainz
-3. Load Selected Albums: Load the tracks of the selected albums. Alternatively, you can double-click on an album in the results.
+3. Load Selected Albums: Load the tracks of the selected albums. Alternatively, you can just double-click on an album in the results.
 4. Toggle Cached Albums: Show or hide cached albums
 5. Get Popular Tracks: Fetch popular tracks for the selected artist from Last.fm
 6. Get Similar Albums: Find similar albums for the selected album
 
 These commands can be found in the menu under "Tools > MusicBeeExplore" or as a hotkey.
+
+Note that you must either select a track or album, or enter a search query in the search box, in order to query an artist. Unfortunately, MusicBee does not provide a way to get the currently visible artist in the music explorer.
 
 ### Search Syntax
 
@@ -108,6 +109,7 @@ The plugin supports additional search syntax for both MusicBrainz and Discogs qu
 
 ## Known Issues
 
-- Track skipping during downloads: The plugin may not receive notifications while downloading a song, causing it to skip through remaining songs and download them all at once. Please do not play another unloaded song while something is downloading (i.e while the yt-dlp window is open).
+- MusicBee doesn't handle streams all that well, so when the on-play action is set to "Stream with MusicBee", there are a few issues. The most notable is that seeking basically does not work at all.
+- Sometimes the view is not updated when album tracks are loaded. To fix this, re-query the artist.
 - Scrobbling issues: Artist names are prefixed with an identifier, affecting Last.fm scrobbling. Add the cache folder to excluded locations in the Last.fm plugin settings.
 - Wavebar: The wavebar is not updated after dummy tracks are downloaded. The ordinary progress bar works fine.

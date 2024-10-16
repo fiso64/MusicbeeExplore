@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows.Forms;
@@ -193,6 +194,23 @@ namespace MusicBeePlugin
             }
 
             SendKeys.SendWait(keysToSend);
+        }
+
+        public static void CenterForm(Form form, IntPtr parentHandle)
+        {
+            if (parentHandle != IntPtr.Zero)
+            {
+                var parentWindow = Control.FromHandle(parentHandle);
+                if (parentWindow != null)
+                {
+                    var parentBounds = parentWindow.Bounds;
+                    form.StartPosition = FormStartPosition.Manual;
+                    form.Location = new Point(
+                        parentBounds.X + (parentBounds.Width - form.Width) / 2,
+                        parentBounds.Y + (parentBounds.Height - form.Height) / 2
+                    );
+                }
+            }
         }
     }
 }

@@ -2,8 +2,10 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using MusicBeePlugin.Downloaders;
 using MusicBeePlugin.Models;
 using MusicBeePlugin.Retrievers;
 using Newtonsoft.Json;
@@ -13,13 +15,17 @@ namespace MusicBeePlugin.Services
 {
     public class DummyProcessor
     {
+        public static string AddIdentifier(string field)
+        {
+            var artists = field.Split(';').Select(a => a.Trim());
+            return string.Join("; ", artists.Select(a => IDENTIFIER + a));
+        }
+
         public static string RemoveIdentifier(string field)
         {
-            if (field.StartsWith(IDENTIFIER))
-            {
-                return field.Substring(IDENTIFIER.Length);
-            }
-            return field;
+            var artists = field.Split(';').Select(a => a.Trim());
+            var cleanedArtists = artists.Select(a => a.StartsWith(IDENTIFIER) ? a.Substring(IDENTIFIER.Length) : a);
+            return string.Join("; ", cleanedArtists);
         }
 
         public async Task ProcessPlayingTrack()
@@ -129,11 +135,13 @@ namespace MusicBeePlugin.Services
                 throw new ArgumentException("Artist, title, fileUrl cannot be null.");
             }
 
-            string searchQuery = $"{RemoveIdentifier(dummy.Artist)} - {dummy.Title}";
+            string searchQuery = $"{DummyProcessor.RemoveIdentifier(dummy.Artist)} - {dummy.Title}";
             var downloader = new YtDlp();
 
-            if (config.UseMediaPlayer)
+            if (config.OnPlay == Config.PlayAction.ExternalPlayerStream)
             {
+                bool FAST_LOAD_FIRST = true;
+
                 int idx = mbApi.NowPlayingList_GetCurrentIndex();
                 mbApi.NowPlayingList_QueryFilesEx("", out string[] files);
 
@@ -141,6 +149,15 @@ namespace MusicBeePlugin.Services
                 string tempFilePath = Path.Combine(Path.GetDirectoryName(firstFilePath), "temp_playlist.m3u8");
 
                 List<string> ytdlQueries = new List<string>();
+
+                if (FAST_LOAD_FIRST)
+                {
+                    idx++;
+                    string firstTitle = mbApi.Library_GetFileTag(firstFilePath, MetaDataType.TrackTitle);
+                    string firstArtist = mbApi.Library_GetFileTag(firstFilePath, MetaDataType.Artist);
+                    var url = await downloader.GetAudioUrl(searchQuery);
+                    ytdlQueries.Add(url);
+                }
 
                 for (int i = idx; i < files.Length; i++)
                 {
@@ -154,6 +171,14 @@ namespace MusicBeePlugin.Services
                 File.WriteAllLines(tempFilePath, ytdlQueries);
 
                 Utils.PlayWithMediaPlayer($"{tempFilePath}", config.MediaPlayerCommand);
+                return;
+            }
+            else if (config.OnPlay == Config.PlayAction.MusicBeeStream)
+            {
+                var url = await downloader.GetAudioUrl(searchQuery);
+                Debug.WriteLine($"Playing stream: {url}");
+                mbApi.NowPlayingList_QueueNext(url);
+                mbApi.Player_PlayNextTrack();
                 return;
             }
 

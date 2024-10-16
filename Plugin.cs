@@ -3,14 +3,22 @@ using System.Drawing;
 using System.Windows.Forms;
 using System.Diagnostics;
 using System.IO;
+using System.ComponentModel;
 
 using MusicBeePlugin.Models;
 using MusicBeePlugin.Commands;
 using MusicBeePlugin.Services;
+using System.Linq;
 
-// todo: fix song skipping bug
-//       For some reason the plugin does not receive any notifications while downloading a song,
-//       making it impossible to intercept and pause dummy songs
+// todo: Why does running Startup() in ReceiveNotification() instead of in Initialise() break everything?
+//       Album requests never finish (only happens when playing the dummy album file, not when
+//       using the command to load the album). Also, unloaded tracks never play, although they are downloaded
+//       successfully.
+
+// bug (minor): Querying an artist > exiting musicbee > re-opening musicbee > loading one of the albums (without requeriyng the artist)
+//       the album tracks will not appear. Must reopen the filter to make them appear. Seems like a MusicBee bug, but can be fixed on
+//       the plugin side by keeping track of whether the artist has been queried in the current session, and if not, reopening the filter
+//       when loading an album
 
 // todo: cancel download when track changes / synchronize access to downloader
 // todo: preload next track when current playback is almost done (maybe)
@@ -47,6 +55,7 @@ namespace MusicBeePlugin
         public static ICommand toggleCachedAlbumsCommand;
         public static ICommand getPopularTracksForArtistCommand;
         public static ICommand getSimilarAlbumsCommand;
+        public static ICommand getShareLinkCommand;
 
         public PluginInfo Initialise(IntPtr apiInterfacePtr)
         {
@@ -91,6 +100,7 @@ namespace MusicBeePlugin
             toggleCachedAlbumsCommand = new ToggleCachedAlbumsCommand();
             getPopularTracksForArtistCommand = new GetPopularTracksForArtistCommand();
             getSimilarAlbumsCommand = new GetSimilarAlbumsCommand();
+            getShareLinkCommand = new GetShareLinkCommand();
 
             var menu = (ToolStripMenuItem)mbApi.MB_AddMenuItem($"mnuTools/MBExplore: Selected", null, null);
 
@@ -108,6 +118,7 @@ namespace MusicBeePlugin
             addCommand("Toggle Cached Albums", "MusicBeeExplore: Toggle cached albums", toggleCachedAlbumsCommand);
             addCommand("Get Popular Tracks", "MusicBeeExplore: Last.fm: Get popular tracks for selected artist", getPopularTracksForArtistCommand);
             addCommand("Get Similar Albums", "MusicBeeExplore: Last.fm: Get similar albums for selected album", getSimilarAlbumsCommand);
+            addCommand("Get Share Link", "MusicBeeExplore: Get YouTube share link for selected track", getShareLinkCommand);
         }
 
         public bool Configure(IntPtr panelHandle)
@@ -117,6 +128,8 @@ namespace MusicBeePlugin
             if (panelHandle != IntPtr.Zero)
             {
                 Panel configPanel = (Panel)Panel.FromHandle(panelHandle);
+                const int horizontalEditOffset = 140;
+                const int editWidth = 200;
                 int verticalOffset = 0;
 
                 void addCheckbox(string text, bool initialChecked, Action<bool> onCheckedChanged)
@@ -152,8 +165,8 @@ namespace MusicBeePlugin
 
                     TextBox textBox = new TextBox
                     {
-                        Location = new Point(label.Width + 10, 0),
-                        Width = 200,
+                        Location = new Point(horizontalEditOffset, 0),
+                        Width = editWidth,
                         Height = 15,
                     };
                     textBox.Text = initialText;
@@ -164,16 +177,59 @@ namespace MusicBeePlugin
                     verticalOffset += textBoxPanel.Height;
                 }
 
+                void addDropdown(string labelText, Enum selectedValue, Type enumType, Action<Enum> onSelectedIndexChanged)
+                {
+                    Panel dropdownPanel = new Panel
+                    {
+                        Location = new Point(0, verticalOffset),
+                        Width = configPanel.Width,
+                        Height = 25
+                    };
+
+                    Label label = new Label
+                    {
+                        Text = labelText,
+                        AutoSize = true,
+                        Location = new Point(0, 0)
+                    };
+                    dropdownPanel.Controls.Add(label);
+
+                    ComboBox comboBox = new ComboBox
+                    {
+                        Location = new Point(horizontalEditOffset, 0),
+                        Width = editWidth,
+                        DropDownStyle = ComboBoxStyle.DropDownList
+                    };
+
+                    comboBox.Items.Clear();
+                    foreach (Enum enumValue in Enum.GetValues(enumType))
+                    {
+                        string description = GetEnumDescription(enumValue);
+                        comboBox.Items.Add(new EnumWrapper(enumValue, description));
+                    }
+
+                    comboBox.DisplayMember = "Display";
+                    comboBox.ValueMember = "Value";
+                    comboBox.SelectedItem = comboBox.Items.Cast<EnumWrapper>().FirstOrDefault(item => item.Value.Equals(selectedValue));
+                    comboBox.SelectedIndexChanged += (sender, e) => onSelectedIndexChanged(((EnumWrapper)comboBox.SelectedItem).Value);
+
+                    dropdownPanel.Controls.Add(comboBox);
+
+                    configPanel.Controls.Add(dropdownPanel);
+                    verticalOffset += dropdownPanel.Height;
+                }
+
                 addCheckbox("Open results in new tab", config.OpenInNewTab, (chk) => tempConfig.OpenInNewTab = chk);
                 addCheckbox("Show download window", config.ShowDownloadWindow, (chk) => tempConfig.ShowDownloadWindow = chk);
                 addCheckbox("Queue tracks after loading album", config.QueueTracksAfterAlbumLoad, (chk) => tempConfig.QueueTracksAfterAlbumLoad = chk);
                 addCheckbox("Get popular tracks when loading albums", config.GetPopularTracks, (chk) => tempConfig.GetPopularTracks = chk);
-                addCheckbox("Use another player to stream audio", config.UseMediaPlayer, (chk) => tempConfig.UseMediaPlayer = chk);
 
-                addTextBox("Player command: ", config.MediaPlayerCommand, (text) => tempConfig.MediaPlayerCommand = text);
-                addTextBox("Discogs Token: ", config.DiscogsToken, (text) => tempConfig.DiscogsToken = text);
-                addTextBox("Last.fm API Key: ", config.LastfmApiKey, (text) => tempConfig.LastfmApiKey = text);
-                
+                verticalOffset += 10;
+
+                addDropdown("On Play Action:", config.OnPlay, typeof(Config.PlayAction), (selected) => tempConfig.OnPlay = (Config.PlayAction)selected);
+                addTextBox("Player command:", config.MediaPlayerCommand, (text) => tempConfig.MediaPlayerCommand = text);
+                addTextBox("Discogs Token:", config.DiscogsToken, (text) => tempConfig.DiscogsToken = text);
+                addTextBox("Last.fm API Key:", config.LastfmApiKey, (text) => tempConfig.LastfmApiKey = text);
             }
             return false;
         }
@@ -212,6 +268,25 @@ namespace MusicBeePlugin
                     dummyProcessor.ProcessPlayingTrack();
                     break;
             }
+        }
+
+        private class EnumWrapper
+        {
+            public Enum Value { get; }
+            public string Display { get; }
+
+            public EnumWrapper(Enum value, string display)
+            {
+                Value = value;
+                Display = display;
+            }
+        }
+
+        private string GetEnumDescription(Enum value)
+        {
+            var field = value.GetType().GetField(value.ToString());
+            var attribute = (DescriptionAttribute)Attribute.GetCustomAttribute(field, typeof(DescriptionAttribute));
+            return attribute == null ? value.ToString() : attribute.Description;
         }
     }
 }
