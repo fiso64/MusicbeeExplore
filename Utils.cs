@@ -203,7 +203,8 @@ namespace MusicBeePlugin
             statusLabel = new Label()
             {
                 Dock = DockStyle.Fill,
-                TextAlign = ContentAlignment.MiddleCenter
+                TextAlign = ContentAlignment.MiddleCenter,
+                UseMnemonic = false,
             };
 
             this.Controls.Add(statusLabel);

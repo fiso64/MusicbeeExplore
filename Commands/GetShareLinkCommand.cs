@@ -109,11 +109,12 @@ namespace MusicBeePlugin.Commands
                 Label titleLabel = new Label
                 {
                     Text = videoInfo.Title,
-                    AutoSize = true,
+                    AutoSize = false,
+                    Size = new Size(320, 20),
                     Location = new Point(15, thumbnailBox.Bottom + 10),
                     Font = new Font(modernFont, FontStyle.Bold),
-                    MaximumSize = new Size(420, 0),
-                    AutoEllipsis = true
+                    AutoEllipsis = true,
+                    TextAlign = ContentAlignment.MiddleLeft
                 };
                 form.Controls.Add(titleLabel);
 

@@ -44,6 +44,43 @@ namespace MusicBeePlugin.Api.MusicBrainz // todo: use json deserialization like 
             return entities;
         }
 
+        public async Task<List<(string name, string id)>> QueryEntitiesExact(Entity entityType, string query, CancellationToken cancellationToken, int limit)
+        {
+            var entityName = ToKebab(entityType.ToString());
+            var exactMatches = new List<(string name, string id)>();
+            int offset = 0;
+            const int perPage = 100;
+            bool hasMore = true;
+
+            while (hasMore && exactMatches.Count < limit)
+            {
+                var searchUrl = $"https://musicbrainz.org/ws/2/{entityName}?query={Uri.EscapeDataString(query)}&limit={perPage}&offset={offset}&fmt=json";
+
+                var response = await _httpClient.GetAsync(searchUrl, cancellationToken);
+                response.EnsureSuccessStatusCode();
+                var data = JObject.Parse(await response.Content.ReadAsStringAsync());
+
+                var entities = data[entityName + "s"].ToList();
+                foreach (var entity in entities)
+                {
+                    string name = entity["name"]?.ToString() ?? entity["title"]?.ToString();
+                    if (string.Equals(name, query, StringComparison.OrdinalIgnoreCase))
+                    {
+                        exactMatches.Add((name, entity["id"].ToString()));
+                        if (exactMatches.Count >= limit)
+                        {
+                            break;
+                        }
+                    }
+                }
+
+                hasMore = entities.Count == perPage;
+                offset += perPage;
+            }
+
+            return exactMatches;
+        }
+
         public async Task<List<Release>> GetReleasesByLabel(string labelId, CancellationToken cancellationToken, bool uniqueNamesOnly = true)
         {
             var releasesData = new List<JObject>();

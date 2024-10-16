@@ -2,7 +2,6 @@
 using System.Diagnostics;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
-using System.Net.Http;
 
 namespace MusicBeePlugin.Downloaders
 {

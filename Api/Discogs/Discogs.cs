@@ -30,19 +30,52 @@ namespace MusicBeePlugin.Api.Discogs
             return JsonConvert.DeserializeObject<SearchResult>(jsonResponse).Results;
         }
 
-        public async Task<List<Release>> GetReleasesAsync(int entityId, SearchEntityType artistOrLabel, CancellationToken cancellationToken = default)
+        public async Task<List<SearchEntity>> SearchEntityExactAsync(string query, SearchEntityType entityType, int limit, CancellationToken cancellationToken = default)
+        {
+            var type = entityType.ToString().ToLower();
+            var exactMatches = new List<SearchEntity>();
+            int page = 1;
+            bool hasMore = true;
+
+            while (hasMore && exactMatches.Count < limit)
+            {
+                var requestUrl = $"https://api.discogs.com/database/search?q={Uri.EscapeDataString(query)}&type={type}&per_page=100&page={page}";
+                var response = await _httpClient.GetAsync(requestUrl, cancellationToken);
+                response.EnsureSuccessStatusCode();
+                var jsonResponse = await response.Content.ReadAsStringAsync();
+                var searchResult = JsonConvert.DeserializeObject<SearchResult>(jsonResponse);
+
+                foreach (var result in searchResult.Results)
+                {
+                    if (string.Equals(result.Title, query, StringComparison.OrdinalIgnoreCase))
+                    {
+                        exactMatches.Add(result);
+                        if (exactMatches.Count >= limit)
+                        {
+                            break;
+                        }
+                    }
+                }
+
+                hasMore = searchResult.Pagination.Page < searchResult.Pagination.Pages;
+                page++;
+            }
+
+            return exactMatches;
+        }
+
+        public async Task<List<Release>> GetReleasesAsync(int entityId, SearchEntityType artistOrLabel, CancellationToken cancellationToken = default, int lookupLimit = 150)
         {
             if (artistOrLabel != SearchEntityType.Artist && artistOrLabel != SearchEntityType.Label)
             {
                 throw new ArgumentException("Entity type must be either Artist or Label.");
             }
 
-            const int LOOKUP_LIMIT = 150;
             var allReleases = new List<Release>();
             int page = 1;
             bool hasMore = true;
 
-            while (hasMore && allReleases.Count < LOOKUP_LIMIT)
+            while (hasMore && allReleases.Count < lookupLimit)
             {
                 var type = artistOrLabel.ToString().ToLower();
                 var requestUrl = $"https://api.discogs.com/{type}s/{entityId}/releases?page={page}&per_page=100&sort=year&sort_order=desc";

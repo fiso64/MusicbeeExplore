@@ -1,8 +1,6 @@
-﻿using MusicBeePlugin.Models;
-using MusicBeePlugin.Services;
+﻿using MusicBeePlugin.Services;
 using System.Collections.Generic;
 using System.Linq;
-using System.Windows.Forms;
 using System.Xml.Linq;
 using static MusicBeePlugin.Plugin;
 

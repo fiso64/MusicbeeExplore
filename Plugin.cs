@@ -25,6 +25,7 @@ using System.Linq;
 // todo: make track playback faster
 // todo: try to reduce false youtube downloads
 // todo: bandcamp retrieval and playback
+// todo: soundcloud playback
 // todo: bandcamp and discogs album suggestions
 
 namespace MusicBeePlugin
@@ -34,7 +35,7 @@ namespace MusicBeePlugin
         public const string IDENTIFIER = "巽 ";
         public const string CACHE_FOLDER = "MusicBeeExplore/cache";
         public const string CACHE_HIDDEN_FOLDER = "MusicBeeExplore/cache-hidden";
-        public const string CACHE_MAP_FILE = "MusicBeeExplore/cache.json";
+        public const string CACHE_MAP_FILE = "MusicBeeExplore/cache/cache.json";
         public const string CONFIG_FILE = "MusicBeeExplore/mbe.conf";
         public const string DUMMY_FILE = "MusicBeeExplore/cache/dummy.opus";
 

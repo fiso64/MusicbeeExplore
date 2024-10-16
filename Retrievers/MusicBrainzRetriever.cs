@@ -32,6 +32,8 @@ namespace MusicBeePlugin.Retrievers
 
         public async Task<EntityRetrieverData> GetArtistAsync(string query, Action<string> statusChange, CancellationToken ct)
         {
+            query = query.Trim();
+
             var entity = Api.MusicBrainz.Entity.Artist;
             bool exact = false;
             bool retrieveAll = false;
@@ -66,34 +68,25 @@ namespace MusicBeePlugin.Retrievers
 
             statusChange($"Querying {entity}: {query}");
 
-            var entities = await _api.QueryEntities(entity, query, ct, exact ? 20 : 0);
-
-            if (entities.Count == 0)
-            {
-                statusChange($"No results found for {entity}: {query}");
-                return null;
-            }
-
-            string entityName;
-            string entityId;
+            List<(string name, string id)> entities;
 
             if (!exact)
             {
-                entityName = entities[0].name;
-                entityId = entities[0].id;
+                entities = await _api.QueryEntities(entity, query, ct, 1);
             }
             else
             {
-                var exactMatch = entities.FirstOrDefault(e => e.name.Equals(query, StringComparison.OrdinalIgnoreCase));
-                if (exactMatch == default)
-                {
-                    statusChange($"No exact match found for {entity}: {query}");
-                    return null;
-                }
-
-                entityName = exactMatch.name;
-                entityId = exactMatch.id;
+                entities = await _api.QueryEntitiesExact(entity, query, ct, 1);
             }
+
+            if (entities.Count == 0)
+            {
+                statusChange($"No{(exact ? " exact" : "")} results found for {entity}: {query}");
+                return null;
+            }
+
+            string entityName = entities[0].name;
+            string entityId = entities[0].id;
 
             return new MusicBrainzEntityRetrieverData 
             { 
