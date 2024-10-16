@@ -24,7 +24,7 @@ The plugin integrates with MusicBee's interface and allows users to query extern
 
 4. The downloaded audio is saved in the opus format and replaces the dummy file. The file is then re-queued for playback.
 
-5. If configured, the plugin can stream the audio directly without downloading (although it takes about the same amount of time until playback starts, at least for minute-long songs).
+5. If configured, the plugin can stream the audio directly without downloading to a file (although it takes about the same amount of time for playback to start, at least for minute-long songs).
 
 ## Requirements
 
@@ -109,7 +109,7 @@ The plugin supports additional search syntax for both MusicBrainz and Discogs qu
 
 ## Known Issues
 
-- MusicBee doesn't handle streams all that well, so when the on-play action is set to "Stream with MusicBee", there are a few issues. The most notable is that seeking basically does not work at all.
+- MusicBee doesn't handle streams all that well, so when the on-play action is set to "Stream with MusicBee", there are a few issues. In particular, seeking in a stream does not work at all.
 - Sometimes the view is not updated when album tracks are loaded. To fix this, re-query the artist.
-- Scrobbling issues: Artist names are prefixed with an identifier, affecting Last.fm scrobbling. Add the cache folder to excluded locations in the Last.fm plugin settings.
+- Scrobbling issues: Artist names are prefixed with an identifier, which results in wrong scrobbles. It's recommended to add the cache folder at `%appdata%\MusicBee\MusicBeeExplore\cache` to excluded locations in the Last.fm plugin settings.
 - Wavebar: The wavebar is not updated after dummy tracks are downloaded. The ordinary progress bar works fine.
