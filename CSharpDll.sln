@@ -19,6 +19,20 @@ Project("{911E67C6-3D85-4FCE-B560-20A9C3E3FF48}") = "MusicBee", "..\..\..\..\..\
 		IORedirection = Auto
 	EndProjectSection
 EndProject
+Project("{911E67C6-3D85-4FCE-B560-20A9C3E3FF48}") = "MusicBee-cleaned", "..\..\..\Desktop\folder\MusicBee\MusicBee-cleaned.exe", "{F761CD47-B391-4B5B-B551-E46A50FD9609}"
+	ProjectSection(DebuggerProjectSystem) = preProject
+		PortSupplier = 00000000-0000-0000-0000-000000000000
+		Executable = C:\Users\fiso\Desktop\folder\MusicBee\MusicBee-cleaned.exe
+		RemoteMachine = FISOTOP
+		StartingDirectory = C:\Users\fiso\Desktop\folder\MusicBee
+		Environment = Default
+		LaunchingEngine = 00000000-0000-0000-0000-000000000000
+		UseLegacyDebugEngines = No
+		LaunchSQLEngine = No
+		AttachLaunchAction = No
+		IORedirection = Auto
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -39,6 +53,10 @@ Global
 		{7D09DBA7-3773-42FB-A05B-BFFCD223DC74}.Debug|x86.ActiveCfg = Release|x86
 		{7D09DBA7-3773-42FB-A05B-BFFCD223DC74}.Release|Any CPU.ActiveCfg = Release|x86
 		{7D09DBA7-3773-42FB-A05B-BFFCD223DC74}.Release|x86.ActiveCfg = Release|x86
+		{F761CD47-B391-4B5B-B551-E46A50FD9609}.Debug|Any CPU.ActiveCfg = Release|x86
+		{F761CD47-B391-4B5B-B551-E46A50FD9609}.Debug|x86.ActiveCfg = Release|x86
+		{F761CD47-B391-4B5B-B551-E46A50FD9609}.Release|Any CPU.ActiveCfg = Release|x86
+		{F761CD47-B391-4B5B-B551-E46A50FD9609}.Release|x86.ActiveCfg = Release|x86
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

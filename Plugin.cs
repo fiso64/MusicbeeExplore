@@ -9,6 +9,12 @@ using MusicBeePlugin.Models;
 using MusicBeePlugin.Commands;
 using MusicBeePlugin.Services;
 using System.Linq;
+using System.Text;
+using System.Reflection;
+using System.Threading;
+using System.Threading.Tasks;
+using HarmonyLib;
+using System.Collections.Generic;
 
 // todo: Why does running Startup() in ReceiveNotification() instead of in Initialise() break everything?
 //       Album requests never finish (only happens when playing the dummy album file, not when
@@ -20,13 +26,18 @@ using System.Linq;
 //       the plugin side by keeping track of whether the artist has been queried in the current session, and if not, reopening the filter
 //       when loading an album
 
+// todo: discogs album suggestions
+// todo: album suggestions should be sorted by how they appear at the source. Sort by setting the year tag in the dummy file.
+// todo: improve results view. Musicbrainz & discogs suggestions can be shown in a single view, but under different headers
+//       similarly for last.fm and discogs album suggestions (e.g. "Discogs: Similar Albums", "Last.fm: Similar Albums")
+// todo: Automate the setup process (i.e create the header tag, mbe view) on first run
+
 // todo: cancel download when track changes / synchronize access to downloader
 // todo: preload next track when current playback is almost done (maybe)
 // todo: make track playback faster
 // todo: try to reduce false youtube downloads
 // todo: bandcamp retrieval and playback
 // todo: soundcloud playback
-// todo: bandcamp and discogs album suggestions
 
 namespace MusicBeePlugin
 {
@@ -120,7 +131,20 @@ namespace MusicBeePlugin
             addCommand("Get Popular Tracks", "MusicBeeExplore: Last.fm: Get popular tracks for selected artist", getPopularTracksForArtistCommand);
             addCommand("Get Similar Albums", "MusicBeeExplore: Last.fm: Get similar albums for selected album", getSimilarAlbumsCommand);
             addCommand("Get Share Link", "MusicBeeExplore: Get YouTube share link for selected track", getShareLinkCommand);
+
+            //var harmony = new Harmony("com.example.musicbeeplugin");
+            //var original = AccessTools.Method("Class837:smethod_0");
+            //var prefix = new HarmonyMethod(typeof(Plugin), nameof(Hook));
+            //harmony.Patch(original, prefix);
         }
+
+        //public static bool Hook(MusicBeeHelpers.ApplicationCommand applicationCommand_0, object object_0, IList<object> ilist_0)
+        //{
+        //    Console.WriteLine($"applicationCommand_0: {applicationCommand_0}");
+        //    Console.WriteLine($"object_0: {object_0}");
+        //    Console.WriteLine($"ilist_0 Count: {ilist_0?.Count}");
+        //    return true;
+        //}
 
         public bool Configure(IntPtr panelHandle)
         {
