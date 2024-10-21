@@ -63,7 +63,7 @@ To enhance your browsing experience, it's recommended to create a custom view fo
    - In the "Virtual Tags" section, click "Add"
    - Name the tag "MbeHeader", and set its value to: 
      ```
-     $If($Contains(<Comment>,Appearance),"More Albums: Appears On","More Albums")
+     $If($Not($Contains(<Comment>,"巽 ")),"Local Albums",$If($Contains(<Comment>,"SimilarAlbums_"),"Similar Albums (Last.fm)",$If($Contains(<Comment>,":0}"),$If($Contains(<Comment>,Appearance),"More Albums (Discogs): Appears On","More Albums (Discogs)"),$If($Contains(<Comment>,Appearance),"More Albums (MusicBrainz): Appears On","More Albums (MusicBrainz)"))))
      ```
 
 2. Create a custom view for the plugin results:
