@@ -220,6 +220,8 @@ namespace MusicBeePlugin
             return (artist, title, album, albumArtist);
         }
 
+        // todo: Check if the order of these elements changes across different versions of musicbee
+        // If so, also get this enum using reflection
         public enum ApplicationCommand
         {
             None,
