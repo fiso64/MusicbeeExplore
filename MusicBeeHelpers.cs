@@ -20,8 +20,9 @@ namespace MusicBeePlugin
         private static Type Class676;
         private static Func<string, object> createStruct118;
         private static Func<object, object> createClass676;
+        private static FieldInfo pluginCommandsField;
 
-        public static void LoadMethods()
+        public static void LoadMethods() // Note: this can be made faster
         {
             var allFlags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static
                 | BindingFlags.GetField | BindingFlags.SetField | BindingFlags.GetProperty | BindingFlags.SetProperty;
@@ -97,8 +98,28 @@ namespace MusicBeePlugin
                 createClass676 = Expression.Lambda<Func<object, object>>(body, param).Compile();
             }
 
+            void getPluginCommandsField()
+            {
+                foreach (var refType in mbAsm.GetTypes())
+                {
+                    pluginCommandsField = refType.GetFields(allFlags).FirstOrDefault(f =>
+                        f.IsStatic && f.FieldType.IsGenericType
+                        && f.FieldType.GetGenericTypeDefinition() == typeof(List<>)
+                        && f.FieldType.GenericTypeArguments.Length == 1
+                        && f.FieldType.GenericTypeArguments[0].IsGenericType
+                        && f.FieldType.GenericTypeArguments[0].GetGenericTypeDefinition() == typeof(KeyValuePair<,>)
+                        && f.FieldType.GenericTypeArguments[0].GenericTypeArguments[0] == typeof(string)
+                        && f.FieldType.GenericTypeArguments[0].GenericTypeArguments[1] == typeof(EventHandler)
+                    );
+            
+                    if (pluginCommandsField != null)
+                        break;
+                }
+            }
+
             getInvokeMethod();
             getDeleteMethod();
+            getPluginCommandsField();
         }
 
         public static void InvokeApplicationCommand(ApplicationCommand command)
@@ -106,7 +127,13 @@ namespace MusicBeePlugin
             invokeApplicationCommandMethod.Invoke(null, new object[] { command, null, null });
         }
 
-        public static void InvokePluginCommand(string command)
+        // The commands can be invoked by calling handler(musicBeeApiInterface, EventArgs.Empty)
+        public static List<KeyValuePair<string, EventHandler>> GetPluginCommands()
+        {
+            return (List<KeyValuePair<string, EventHandler>>)pluginCommandsField.GetValue(null);
+        }
+        
+        public static void InvokePluginCommandByName(string command)
         {
             int hash = StringComparer.OrdinalIgnoreCase.GetHashCode(command);
             hash = hash < 0 ? hash : -hash;
