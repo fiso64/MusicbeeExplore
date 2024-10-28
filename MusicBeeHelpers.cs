@@ -106,6 +106,13 @@ namespace MusicBeePlugin
             invokeApplicationCommandMethod.Invoke(null, new object[] { command, null, null });
         }
 
+        public static void InvokePluginCommand(string command)
+        {
+            int hash = StringComparer.OrdinalIgnoreCase.GetHashCode(command);
+            hash = hash < 0 ? hash : -hash;
+            invokeApplicationCommandMethod.Invoke(null, new object[] { (ApplicationCommand)hash, null, null });
+        }
+
         public static void DeleteFilesFromLibrary(string[] paths)
         {
             var list_0 = (IList)Activator.CreateInstance(typeof(List<>).MakeGenericType(Class676));
